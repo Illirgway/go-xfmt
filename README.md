@@ -72,8 +72,8 @@ by parser before it will be cached. To check threshold, use `CacheThreshold` fn.
 
  
 ### Mismatches with std `fmt`
-* simple no-ln fns `Sprint`, `Fprint` and `Print` don't try to recognize initial `s` args types at all, so unlike such 
-  `fmt` fns, so they can't determine when to `Spaces are added between operands when neither is a string` and
+* simple no-ln fns `Sprint`, `Fprint` and `Print` don't try to recognize args' initial types at all, so unlike such 
+  `fmt` fns they can't determine when to `Spaces are added between operands when neither is a string` and
   don't add spaces between args et all
 * some errors marks (especially for errors related to the tail of `format`) of formatting fns may differ from such  
   returned by original `fmt` format fns
