@@ -1,5 +1,5 @@
 
-# Go xmft package
+# Go xfmt package
 Almost drop-in replacement of std `fmt` package only for `string` args
 
 # Overview
@@ -78,7 +78,11 @@ by parser before it will be cached. To check threshold, use `CacheThreshold` fn.
 * some errors marks (especially for errors related to the tail of `format`) of formatting fns may differ from such  
   returned by original `fmt` format fns
 
-### LICENSE
+## Contributing
+
+Plz don't send pull requests for now, only write issue tickets
+
+## LICENSE
 
 This program is free software: you can redistribute it and/or modify it under the terms of the 
 GNU General Public License as published by the Free Software Foundation, either version 3 of the License, 
