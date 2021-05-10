@@ -1,6 +1,6 @@
 
 # Go xfmt package
-Almost drop-in replacement of std `fmt` package only for `string` args
+Almost drop-in replacement of std `fmt` package but only for `string` args
 
 # Overview
 This package is almost drop-in replacement for std `fmt` package fns `*print`, `*printf` and

@@ -21,6 +21,7 @@ package xfmt
 import (
 	"fmt"
 	"testing"
+	"unicode"
 )
 
 // emulated sprintf
@@ -111,7 +112,37 @@ const (
 	tpfc1fmt_s_w20_p7      = "%20.7s"
 	tpfc1fmt_s_w20_p7_fm   = "%-20.7s"
 	tpfc1fmt_si1_w20_p7_fm = "%-20.7[3]s"
-	tpfc1fmt_s_wi1_p_fm    = "%[1]*.s"
+	tpfc1fmt_s_wi1_p_fs    = "%#[1]*.s"
+	tpfc1fmt_s_p7_fm       = "%-.7s"
+	tpfc1fmt_si1_pi2       = "%.[2]*[1]s"
+	tpfc1fmt_si1_wi2_pi3   = "%[2]*.[3]*[1]s"
+
+	// %q
+	tpfc1fmt_q         = "%q"
+	tpfc1fmt_q_w20_p13 = "%20.13q"
+	tpfc1fmt_q_fs      = "%#q"
+	tpfc1fmt_q_fp      = "%+q"
+	tpfc1fmt_q_fps     = "%+#q"
+
+	// %x
+	tpfc1fmt_x             = "%x"
+	tpfc1fmt_x_w19_p13     = "%19.13x"
+	tpfc1fmt_x_w23_p7_fm   = "%-23.7x"
+	tpfc1fmt_x_f_          = "% x"
+	tpfc1fmt_x_fs          = "%#x"
+	tpfc1fmt_x_fs_         = "%# x"
+	tpfc1fmt_x_w37_p5_fs_  = "%# 37.5x"
+	tpfc1fmt_x_w37_p5_fsm_ = "%# -37.5x"
+
+	// %X
+	tpfc1fmt_X             = "%X"
+	tpfc1fmt_X_w19_p13     = "%19.13X"
+	tpfc1fmt_X_w23_p7_fm   = "%-23.7X"
+	tpfc1fmt_X_f_          = "% X"
+	tpfc1fmt_X_fs          = "%#X"
+	tpfc1fmt_X_fs_         = "%# X"
+	tpfc1fmt_X_w37_p5_fs_  = "%# 37.5X"
+	tpfc1fmt_X_w37_p5_fsm_ = "%# -37.5X"
 )
 
 const (
@@ -332,8 +363,458 @@ var parseFormatTestCases1 = [...]parseFormatTestCase{
 			0,
 		},
 	},
+	// "%s" token with indir width, prec with no value and  flag sharp
+	{
+		tpfc1fmt_s_wi1_p_fs,
+		xfmt{
+			[]token{
+				{
+					verb:  verbString,
+					value: string(verbCharString),
+					flags: flagIndirectWidth | flagSharp,
+					width: 1 - 1,
+					prec:  0,
+					arg:   2 - 1,
+				},
+			},
+			2,
+			0,
+		},
+	},
+	// "%s" token without width, with prec and right pad
+	{
+		tpfc1fmt_s_p7_fm,
+		xfmt{
+			[]token{
+				{
+					verb:  verbString,
+					value: string(verbCharString),
+					flags: flagMinus,
+					width: absentValue,
+					prec:  7,
+					arg:   0,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%s" token with prec indir and arg num
+	{
+		tpfc1fmt_si1_pi2,
+		xfmt{
+			[]token{
+				{
+					verb:  verbString,
+					value: string(verbCharString),
+					flags: flagIndirectPrec,
+					width: absentValue,
+					prec:  2 - 1,
+					arg:   1 - 1,
+				},
+			},
+			2,
+			0,
+		},
+	},
+	// "%s" token with indir width, prec and arg num
+	{
+		tpfc1fmt_si1_wi2_pi3,
+		xfmt{
+			[]token{
+				{
+					verb:  verbString,
+					value: string(verbCharString),
+					flags: flagIndirectWidth | flagIndirectPrec,
+					width: 2 - 1,
+					prec:  3 - 1,
+					arg:   1 - 1,
+				},
+			},
+			3,
+			0,
+		},
+	},
+	// simple "%q" token
+	{
+		tpfc1fmt_q,
+		xfmt{
+			[]token{
+				{
+					verb:  verbQuoted,
+					value: string(verbCharQuoted),
+					flags: flagNone,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%q" token with width and prec
+	{
+		tpfc1fmt_q_w20_p13,
+		xfmt{
+			[]token{
+				{
+					verb:  verbQuoted,
+					value: string(verbCharQuoted),
+					flags: flagNone,
+					width: 20,
+					prec:  13,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%q" token with flag plus
+	{
+		tpfc1fmt_q_fp,
+		xfmt{
+			[]token{
+				{
+					verb:  verbQuoted,
+					value: string(verbCharQuoted),
+					flags: flagPlus,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%q" token with flag sharp
+	{
+		tpfc1fmt_q_fs,
+		xfmt{
+			[]token{
+				{
+					verb:  verbQuoted,
+					value: string(verbCharQuoted),
+					flags: flagSharp,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%q" token with plus and sharp flags
+	{
+		tpfc1fmt_q_fps,
+		xfmt{
+			[]token{
+				{
+					verb:  verbQuoted,
+					value: string(verbCharQuoted),
+					flags: flagSharp | flagPlus,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token
+	{
+		tpfc1fmt_x,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagNone,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token with width and prec
+	{
+		tpfc1fmt_x_w19_p13,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagNone,
+					width: 19,
+					prec:  13,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token with width, prec and minus flag
+	{
+		tpfc1fmt_x_w23_p7_fm,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagMinus,
+					width: 23,
+					prec:  7,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token with space flag
+	{
+		tpfc1fmt_x_f_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagSpace,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token with sharp flag
+	{
+		tpfc1fmt_x_fs,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagSharp,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token with space and sharp flags
+	{
+		tpfc1fmt_x_fs_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagSharp | flagSpace,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token with width, prec, space and sharp flags
+	{
+		tpfc1fmt_x_w37_p5_fs_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagSharp | flagSpace,
+					width: 37,
+					prec:  5,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%x" token with width, prec, space, minus and sharp flags
+	{
+		tpfc1fmt_x_w37_p5_fsm_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(verbCharHex),
+					flags: flagSharp | flagSpace | flagMinus,
+					width: 37,
+					prec:  5,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token
+	{
+		tpfc1fmt_X,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token with width and prec
+	{
+		tpfc1fmt_X_w19_p13,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb,
+					width: 19,
+					prec:  13,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token with width, prec and minus flag
+	{
+		tpfc1fmt_X_w23_p7_fm,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb | flagMinus,
+					width: 23,
+					prec:  7,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token with space flag
+	{
+		tpfc1fmt_X_f_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb | flagSpace,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token with sharp flag
+	{
+		tpfc1fmt_X_fs,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb | flagSharp,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token with space and sharp flags
+	{
+		tpfc1fmt_X_fs_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb | flagSharp | flagSpace,
+					width: absentValue,
+					prec:  absentValue,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token with width, prec, space and sharp flags
+	{
+		tpfc1fmt_X_w37_p5_fs_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb | flagSharp | flagSpace,
+					width: 37,
+					prec:  5,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
+	// "%X" token with width, prec, space, minus and sharp flags
+	{
+		tpfc1fmt_X_w37_p5_fsm_,
+		xfmt{
+			[]token{
+				{
+					verb:  verbHex,
+					value: string(unicode.ToUpper(verbCharHex)),
+					flags: flagUpperVerb | flagSharp | flagSpace | flagMinus,
+					width: 37,
+					prec:  5,
+					arg:   1 - 1,
+				},
+			},
+			1,
+			0,
+		},
+	},
 	/*
-		// simple "%s" token with arg num
+		// "%s" token with
 		{
 			tpfc1fmt_si3,
 			xfmt{
@@ -348,6 +829,10 @@ var parseFormatTestCases1 = [...]parseFormatTestCase{
 		},
 	*/
 }
+
+// TODO xfmt <-> fmt test
+// TODO tests for error cases and eq.
+// TODO adapted original fmt tests
 
 // go test -count=1 -v -run "^TestParseFormatCases1$"
 // go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestParseFormatCases1$" 2> fmt.log
