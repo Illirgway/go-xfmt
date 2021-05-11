@@ -49,11 +49,11 @@ func tokenCompare(t1, t2 *token) bool {
 	return *t1 == *t2
 }
 
-func (c *parseFormatTestCase) run(t *testing.T) error {
+func (c *parseFormatTestCase) run( /*t *testing.T*/ ) error {
 
 	xfmt := parseFormat(c.format)
 
-	t.Logf("%q ==> %#v", c.format, xfmt)
+	//t.Logf("%q ==> %#v", c.format, xfmt)
 
 	if want, got := c.xfmt.args, xfmt.args; want != got {
 		return fmt.Errorf(errParseFormatMismatchArgsPtn, want, got)
@@ -831,7 +831,7 @@ var parseFormatTestCases1 = [...]parseFormatTestCase{
 }
 
 // TODO xfmt <-> fmt test
-// TODO tests for error cases and eq.
+// TODO tests for error cases and equality
 // TODO adapted original fmt tests
 
 // go test -count=1 -v -run "^TestParseFormatCases1$"
@@ -845,8 +845,8 @@ func TestParseFormatCases1(t *testing.T) {
 
 		testCase := &parseFormatTestCases1[i]
 
-		if err := testCase.run(t); err != nil {
-			t.Errorf("testCase %d %q error: %v", i, testCase.format, err)
+		if err := testCase.run( /*t*/ ); err != nil {
+			t.Errorf("testCase %d %q (%#v) error: %v", i, testCase.format, testCase.xfmt, err)
 			nerrs++
 		}
 	}

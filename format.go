@@ -34,7 +34,7 @@ type xfmt struct {
 var formatBufPool bytebufferpool.Pool
 
 //go:nosplit
-func (fmt *xfmt) printBuf(buf *bytebufferpool.ByteBuffer, args []string) {
+func (fmt *xfmt) bprint(buf *bytebufferpool.ByteBuffer, args []string) {
 
 	for i := 0; i < len(fmt.tokens); i++ {
 		fmt.tokens[i].format(buf, args)
@@ -63,22 +63,22 @@ func (fmt *xfmt) printBuf(buf *bytebufferpool.ByteBuffer, args []string) {
 func (fmt *xfmt) Bprint(args []string) (buf *bytebufferpool.ByteBuffer) {
 
 	// fast-paths
-	// - format is empty string
-	if len(fmt.tokens) == 0 {
+	// - format is empty string and no args
+	if (len(fmt.tokens) == 0) && (len(args) == 0) {
 		return nil
 	}
 
 	buf = formatBufPool.Get()
 
 	// - format is a single raw const string value without any verb
-	if (len(fmt.tokens) == 1) && (len(args) == 0 /* implies `args == nil` */) &&
+	if (len(fmt.tokens) == 1) && (fmt.args == 0) && (len(args) == 0 /* implies `args == nil` */) &&
 		(fmt.tokens[0].verb == verbNone) {
 		//buf.WriteString(fmt.tokens[0].value)
 		buf.SetString(fmt.tokens[0].value)
 		return buf
 	}
 
-	fmt.printBuf(buf, args)
+	fmt.bprint(buf, args)
 
 	return buf
 }
@@ -86,8 +86,8 @@ func (fmt *xfmt) Bprint(args []string) (buf *bytebufferpool.ByteBuffer) {
 func (fmt *xfmt) Fprint(w io.Writer, args []string) (n int, err error) {
 
 	// fast-paths
-	// - format is empty string
-	if len(fmt.tokens) == 0 {
+	// - format is empty string and no args
+	if (len(fmt.tokens) == 0) && (len(args) == 0) {
 		return 0, nil
 	}
 
@@ -112,13 +112,13 @@ func (fmt *xfmt) Fprint(w io.Writer, args []string) (n int, err error) {
 func (fmt *xfmt) Sprint(args []string) (s string) {
 
 	// fast-paths
-	// - format is empty string
-	if len(fmt.tokens) == 0 {
+	// - format is empty string and no args
+	if (len(fmt.tokens) == 0) && (len(args) == 0) {
 		return ""
 	}
 
 	// - format is a single raw const string value without any verb
-	if (len(fmt.tokens) == 1) && (len(args) == 0 /* implies `args == nil` */) &&
+	if (len(fmt.tokens) == 1) && (fmt.args == 0) && (len(args) == 0 /* implies `args == nil` */) &&
 		(fmt.tokens[0].verb == verbNone) {
 		return fmt.tokens[0].value
 	}

@@ -174,15 +174,14 @@ parseLoop:
 		// `WidthPrec` or `ArgNum` or format error (i.e utf-8 char or spec char), but not at allowed known `Verb`
 		// because simple direct 'ascii char verb' has been processed in fastLoop
 
-		//var ok bool
-		var properNextArgNum bool
+		var hasArgNum, properArgNum, properNextArgNum bool
 
 		// all of Width, Precision and ArgNum cases may starts with ArgNum (see ebnf above). Try to parse ArgNum
 
-		curArg, i, hasArgNum, properArgNum := tryArgNum(curArg, format, i)
+		curArg, i, hasArgNum, properArgNum = tryArgNum(curArg, format, i)
 
-		// here curArg is parsed cur arg num (or -1)
-		if curArg >= needArgs {
+		// here curArg is parsed cur arg num
+		if hasArgNum && (curArg >= needArgs) {
 			needArgs = curArg + 1
 		}
 
@@ -251,8 +250,8 @@ parseLoop:
 
 			curArg, i, hasArgNum, properNextArgNum = tryArgNum(curArg, format, i)
 
-			// here curArg is parsed cur arg num (or -1)
-			if curArg >= needArgs {
+			// here curArg is parsed cur arg num
+			if hasArgNum && (curArg >= needArgs) {
 				needArgs = curArg + 1
 			}
 

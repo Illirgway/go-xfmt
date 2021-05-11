@@ -19,7 +19,7 @@ This package is almost drop-in replacement for std `fmt` package fns `*print`, `
 
 ## Status: _ALPHA_
 * **CAN'T BE USED IN PRODUCTION FOR NOW**
-* finish up currently unfinished tests (printf_test, format_test)
+* finish up currently unfinished tests (printf_test, cache_test)
 * adapted tests from original `fmt` package is required
 * more tests is required (up to full code coverage)
 

@@ -84,6 +84,12 @@ func (tc *thresholdCounters) Count(key string) (count uint) {
 	return count
 }
 
+func (tc *thresholdCounters) Delete(key string) {
+	tc.lock.Lock()
+	delete(tc.counters, key)
+	tc.lock.Unlock()
+}
+
 var countersCache thresholdCounters
 
 //

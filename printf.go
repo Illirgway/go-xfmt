@@ -33,7 +33,7 @@ func forgeXfmt(format string) (xfmt xfmt) {
 
 	threshold := CacheThreshold()
 
-	// if already in cache, should not recache (and counting)
+	// if already in cache, should not recache (and recounting)
 	if has {
 		return xfmt
 	}
@@ -51,7 +51,13 @@ func forgeXfmt(format string) (xfmt xfmt) {
 		}
 
 		if shouldCache {
+			// store in cache...
 			xfmtCache.Set(format, xfmt)
+
+			// ...and then remove format value from counters cache if needed to reduce counters heapsize and memallocs
+			if threshold != CacheAlways {
+				countersCache.Delete(format)
+			}
 		}
 	}
 
@@ -59,28 +65,24 @@ func forgeXfmt(format string) (xfmt xfmt) {
 }
 
 // `go1.13: cannot inline Fprintf: function too complex: cost 137 exceeds budget 80`
-//go:nosplit
 func Fprintf(w io.Writer, format string, args ...string) (n int, err error) {
 	xfmt := forgeXfmt(format)
 	return xfmt.Fprint(w, args)
 }
 
 // `go1.13: cannot inline Printf: function too complex: cost 138 exceeds budget 80`
-//go:nosplit
 func Printf(format string, args ...string) (n int, err error) {
 	xfmt := forgeXfmt(format)
 	return xfmt.Fprint(os.Stdout, args)
 }
 
 // `go1.13: cannot inline Sprintf: function too complex: cost 127 exceeds budget 80`
-//go:nosplit
 func Sprintf(format string, args ...string) string {
 	xfmt := forgeXfmt(format)
 	return xfmt.Sprint(args)
 }
 
 // `go1.13: cannot inline Errorf: function too complex: cost 135 exceeds budget 80`
-//go:nosplit
 func Errorf(format string, args ...string) error {
 	xfmt := forgeXfmt(format)
 	return errors.New(xfmt.Sprint(args))

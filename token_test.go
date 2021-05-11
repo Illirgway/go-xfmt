@@ -35,7 +35,7 @@ const errPtnTestCaseResultMismatch = "token result value mismatch: want %q, got 
 
 var errTestCaseFormatFail = errors.New("format fail (not ok)")
 
-func (tcase *tokenTestCase) run(t *testing.T) error {
+func (tcase *tokenTestCase) run( /*t *testing.T*/ ) error {
 
 	//var buf strings.Builder
 	var buf bytebufferpool.ByteBuffer
@@ -626,8 +626,11 @@ func TestTokenCases1(t *testing.T) {
 	nerrs, sz := 0, len(tokenTestCases1)
 
 	for i := 0; i < sz; i++ {
-		if err := tokenTestCases1[i].run(t); err != nil {
-			t.Errorf("%d: %w", i, err)
+
+		tcase := &tokenTestCases1[i]
+
+		if err := tcase.run( /*t*/ ); err != nil {
+			t.Errorf("%d (%#v => %v): %v", i, tcase.token, tcase.args, err)
 			nerrs++
 		}
 	}

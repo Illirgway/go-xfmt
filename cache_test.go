@@ -18,24 +18,10 @@
 
 package xfmt
 
-import "testing"
+// thread-unsafe
+func purgeCaches() {
+	countersCache.counters = nil
+	xfmtCache.cache = nil
+}
 
 // TODO
-
-// go test -count=1 -v -run "^TestPrinterSprintf1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestPrinterSprintf1$" 2> fmt.log
-// go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestPrinterSprintf1(t *testing.T) {
-
-	purgeCaches()
-
-	SetCacheThreshold(CacheAlways)
-
-	t.Log(Sprintf("%% ||| %s ||| %q ||| % #x", tpfc1argpct1, tpfc1argbqqt1, tpfc1argutf8c))
-	t.Logf("%#v", countersCache.counters)
-	t.Logf("%#v", xfmtCache.cache)
-
-	for k, v := range xfmtCache.cache {
-		t.Logf("%q => %#v", k, v)
-	}
-}
