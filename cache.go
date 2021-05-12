@@ -21,6 +21,7 @@ package xfmt
 import (
 	"sync"
 	"sync/atomic"
+	"unsafe"
 )
 
 // repetitions counting cache
@@ -94,9 +95,19 @@ var countersCache thresholdCounters
 
 //
 
+// INFO Use unsafe.Pointer instead of direct type for cache map to apply atomic.LoadPointer instead of RWLock usage
+//      This is necessary because up to ~20% of the execution time is spent on RLock / RUnlock
+//      Due to the fact that adding to the cache is a very rare operation with a certain finite number of times
+//      in most cases (because `format` strings are just hardcoded string constants in the overwhelming majority
+//      of cases), then to add to the cache it is applicable to use a complete re-creation of the hash and overwrite
+//      it in place of the old one using `atomic. StorePointer`
+
+// ash map type alias
+type formatCacheMap = map[string]xfmt // NOTE xfmt by value
+
 type formatCache struct {
-	lock  sync.RWMutex
-	cache map[string]xfmt // NOTE xfmt by value
+	lock  sync.Mutex
+	cache unsafe.Pointer // formatCacheMap
 }
 
 // inlined
@@ -104,29 +115,54 @@ type formatCache struct {
 //go:nosplit
 func (c *formatCache) Get(format string) (fmt xfmt, has bool) {
 
-	c.lock.RLock()
+	cache := atomic.LoadPointer(&c.cache)
 
-	fmt, has = c.cache[format]
+	// here `has` is default zero bool value `false`
 
-	c.lock.RUnlock()
+	if cache != nil {
+		fmt, has = (*((*formatCacheMap)((unsafe.Pointer)(&cache))))[format]
+	}
 
 	return fmt, has
 }
 
 // thread-safe
-//go:nosplit
+//-go:nosplit
 func (c *formatCache) Set(format string, fmt xfmt) {
 
 	c.lock.Lock()
+
 	// hate defer, but we should unlock in case of any write (== memalloc) error
 	defer c.lock.Unlock()
 
-	// lazy map init
-	if c.cache == nil {
-		c.cache = make(map[string]xfmt, 1)
+	ptr := atomic.LoadPointer(&c.cache)
+
+	oldCache := *((*formatCacheMap)((unsafe.Pointer)(&ptr)))
+
+	sz := 1
+
+	if oldCache != nil {
+
+		// last check for key's value existence
+		if _, has := oldCache[format]; has {
+			// format value already is in cache
+			return
+		}
+
+		sz = len(oldCache) + 1
 	}
 
-	c.cache[format] = fmt
+	newCache := make(formatCacheMap, sz)
+
+	if oldCache != nil {
+		for k, v := range oldCache {
+			newCache[k] = v
+		}
+	}
+
+	newCache[format] = fmt
+
+	atomic.StorePointer(&c.cache, *(*unsafe.Pointer)(unsafe.Pointer(&newCache)))
 }
 
 var xfmtCache formatCache

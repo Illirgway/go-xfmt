@@ -19,7 +19,6 @@
 package xfmt
 
 import (
-	"github.com/valyala/bytebufferpool"
 	"io"
 )
 
@@ -30,11 +29,26 @@ type xfmt struct {
 	// NOTE small size struct, may be passed by value
 }
 
-// xfmt format fns buf
-var formatBufPool bytebufferpool.Pool
+func (fmt *xfmt) bprint(args []string) (buf *buffer) {
 
-//go:nosplit
-func (fmt *xfmt) bprint(buf *bytebufferpool.ByteBuffer, args []string) {
+	// fast-paths
+	// - format is empty string and no args
+	if (len(fmt.tokens) == 0) && (len(args) == 0) {
+		return nil
+	}
+
+	buf = bpool.Get()
+
+	// try to minimize memallocs
+	buf.Grow(fmt.minSize)
+
+	// - format is a single raw const string value without any verb
+	if (len(fmt.tokens) == 1) && (fmt.args == 0) && (len(args) == 0 /* implies `args == nil` */) &&
+		(fmt.tokens[0].verb == verbNone) {
+		buf.WriteString(fmt.tokens[0].value)
+		//buf.SetString(fmt.tokens[0].value)
+		return
+	}
 
 	for i := 0; i < len(fmt.tokens); i++ {
 		fmt.tokens[i].format(buf, args)
@@ -58,27 +72,6 @@ func (fmt *xfmt) bprint(buf *bytebufferpool.ByteBuffer, args []string) {
 
 		buf.WriteByte(charRightParens)
 	}
-}
-
-func (fmt *xfmt) Bprint(args []string) (buf *bytebufferpool.ByteBuffer) {
-
-	// fast-paths
-	// - format is empty string and no args
-	if (len(fmt.tokens) == 0) && (len(args) == 0) {
-		return nil
-	}
-
-	buf = formatBufPool.Get()
-
-	// - format is a single raw const string value without any verb
-	if (len(fmt.tokens) == 1) && (fmt.args == 0) && (len(args) == 0 /* implies `args == nil` */) &&
-		(fmt.tokens[0].verb == verbNone) {
-		//buf.WriteString(fmt.tokens[0].value)
-		buf.SetString(fmt.tokens[0].value)
-		return buf
-	}
-
-	fmt.bprint(buf, args)
 
 	return buf
 }
@@ -91,20 +84,21 @@ func (fmt *xfmt) Fprint(w io.Writer, args []string) (n int, err error) {
 		return 0, nil
 	}
 
-	// wrap around Bprint
+	// common case, buf needed
 
-	b := fmt.Bprint(args)
+	// wrap around bprint
+
+	b := fmt.bprint(args)
 
 	// impossible situation
-	if b == nil {
+	if b == nil || b.Len() == 0 {
 		return 0, nil
 	}
 
-	// implicit copy buf as string to free buf and ret it back to pool
-	// WARN make string from buf BEFORE return buf to pool
+	// WARN write buf BEFORE return it to pool
 	n, err = w.Write(b.Bytes())
 
-	formatBufPool.Put(b)
+	b.Free()
 
 	return n, err
 }
@@ -125,40 +119,20 @@ func (fmt *xfmt) Sprint(args []string) (s string) {
 
 	// common case, buf needed
 
-	/* with strings.Builder (but buf e2h without `NoEscape`)
-	var buf strings.Builder
+	// wrap around bprint
 
-	// try to minimize memallocs
-	buf.Grow(fmt.minSize)
-
-	fmt.print(&buf, args)
-
-	return buf.String()
-	*/
-
-	// use pooled ByteBuffer instead of stack allocated strings.Builder
-	// with additional implicit allocate and memcopy in ByteBuffer.String()
-	// get rid of a lot of reallocations in ByteBuffer.Write*() fns during the
-	// formatted string writing
-	//
-	// unfortunately ByteBuffer doesn't provide Grow() so this fn can't be used
-	// to explicit growing internal ByteBuffer buf when grow value is known
-	//
-
-	// wrap around Bprint
-
-	b := fmt.Bprint(args)
+	b := fmt.bprint(args)
 
 	// impossible situation
-	if b == nil {
+	if b == nil || b.Len() == 0 {
 		return ""
 	}
 
-	// implicit copy buf as string to free buf and ret it back to pool
+	// implicitly copy buf as string to free buf and ret it back to pool
 	// WARN make string from buf BEFORE return buf to pool
 	s = b.String()
 
-	formatBufPool.Put(b)
+	b.Free()
 
 	return s
 }

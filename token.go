@@ -19,7 +19,6 @@
 package xfmt
 
 import (
-	"github.com/valyala/bytebufferpool"
 	"strconv"
 	"unicode/utf8"
 )
@@ -194,7 +193,7 @@ type token struct {
 // pseudoflag `no value defined` for width and prec
 const absentValue = -1
 
-type fmtFn = func(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, value string, flags flags, width, prec int) (success bool)
+type fmtFn = func(buf *buffer /* *strings.Builder */, value string, flags flags, width, prec int) (success bool)
 
 // TODO??
 /*
@@ -247,16 +246,13 @@ var (
 	}
 )
 
-// buffer pool for temporary strings
-var fmtBufPool bytebufferpool.Pool
-
 // TODO (*strings.Builder).WriteString() не имеет внутренней встроенной проверки на empty string noop `s == ""`,
 //      когда ничего просто делать не надо кроме return, и для ее внедрения необходим враппер вокруг strings.Builder
 //      Также нужна встроенная функция buf.Pad чтобы делать паддинг
 
 // SEE src/fmt/print.go::(*pp).badArgNum()
 //go:nosplit
-func (token *token) badArgNum(buf *bytebufferpool.ByteBuffer /* *strings.Builder */) {
+func (token *token) badArgNum(buf *buffer /* *strings.Builder */) {
 
 	// PPSL: use Grow before multiple writes to minimize memallocs
 
@@ -267,7 +263,7 @@ func (token *token) badArgNum(buf *bytebufferpool.ByteBuffer /* *strings.Builder
 
 // SEE src/fmt/print.go::(*pp).missingArg()
 //go:nosplit
-func (token *token) missingArg(buf *bytebufferpool.ByteBuffer /* *strings.Builder */) {
+func (token *token) missingArg(buf *buffer /* *strings.Builder */) {
 
 	// PPSL: use Grow before multiple writes to minimize memallocs
 
@@ -278,7 +274,7 @@ func (token *token) missingArg(buf *bytebufferpool.ByteBuffer /* *strings.Builde
 
 // SEE src/fmt/print.go::(*pp).badVerb()
 //go:nosplit
-func (token *token) badVerb(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, arg string) {
+func (token *token) badVerb(buf *buffer /* *strings.Builder */, arg string) {
 
 	// PPSL: use Grow before multiple writes to minimize memallocs
 
@@ -298,7 +294,7 @@ func (token *token) badVerb(buf *bytebufferpool.ByteBuffer /* *strings.Builder *
 // such code leads to `moved to heap: buf` at least in go1.13
 // `go1.13: cannot inline (*token).fmtStringE2H: function too complex: cost 152 exceeds budget 80`
 //go:nosplit
-func (token *token) fmtStringE2H(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, arg string, flags flags, width, prec int) bool {
+func (token *token) fmtStringE2H(buf *buffer /* *strings.Builder */, arg string, flags flags, width, prec int) bool {
 
 	if fn := fmtFuncByVerb(token.verb); fn != nil {
 		return fn(buf, arg, flags, width, prec)
@@ -313,7 +309,7 @@ func (token *token) fmtStringE2H(buf *bytebufferpool.ByteBuffer /* *strings.Buil
 // SEE src/fmt/print.go::(*pp).fmtString()
 // NOTE long version without `buf` e2h
 //go:nosplit
-func (token *token) fmtString(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, arg string, flags flags, width, prec int) bool {
+func (token *token) fmtString(buf *buffer /* *strings.Builder */, arg string, flags flags, width, prec int) bool {
 
 	switch token.verb {
 	case verbString:
@@ -331,10 +327,10 @@ func (token *token) fmtString(buf *bytebufferpool.ByteBuffer /* *strings.Builder
 }
 
 // @return bool success status
-func (token *token) format(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, args []string) bool {
+func (token *token) format(buf *buffer /* *strings.Builder */, args []string) bool {
 
 	// impossible situation
-	if token == nil {
+	if token == nil || buf == nil {
 		//buf.WriteString(nilToken)
 		return false
 	}
@@ -428,7 +424,7 @@ func (token *token) format(buf *bytebufferpool.ByteBuffer /* *strings.Builder */
 
 // SEE src/fmt/format.go::(*fmt).fmtS()
 //go:nosplit
-func fmtStr(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, flags flags, width, prec int) bool {
+func fmtStr(buf *buffer /* *strings.Builder */, s string, flags flags, width, prec int) bool {
 	s = truncateString(s, prec)
 	padString(buf, s, flags, width)
 	return true
@@ -436,7 +432,7 @@ func fmtStr(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, fla
 
 // SEE src/fmt/format.go::(*fmt).fmtQ()
 //go:nosplit
-func fmtQuot(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, flags flags, width, prec int) bool {
+func fmtQuot(buf *buffer /* *strings.Builder */, s string, flags flags, width, prec int) bool {
 
 	s = truncateString(s, prec)
 
@@ -450,22 +446,16 @@ func fmtQuot(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, fl
 		return true
 	}
 
-	b := fmtBufPool.Get()
-
-	// hate defer
-	//defer fmtBufPool.Put(b)
+	b := buf.TempBuf()
 
 	// check ascii-only flag
 	if flags.has(flagAsciiOnly) {
-		b.B = strconv.AppendQuoteToASCII(b.B, s)
+		b = strconv.AppendQuoteToASCII(b, s)
 	} else {
-		b.B = strconv.AppendQuote(b.B, s)
+		b = strconv.AppendQuote(b, s)
 	}
 
-	pad(buf, b.B, flags, width)
-
-	// w/o defer
-	fmtBufPool.Put(b)
+	pad(buf, b, flags, width)
 
 	return true
 }
@@ -477,7 +467,7 @@ const (
 
 // SEE src/fmt/format.go::(*fmt).fmtSx() -> (*fmt).fmtSbx()
 //go:nosplit
-func fmtHex(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, flags flags, width, prec int) bool {
+func fmtHex(buf *buffer /* *strings.Builder */, s string, flags flags, width, prec int) bool {
 
 	sz := len(s)
 
@@ -534,40 +524,61 @@ func fmtHex(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, fla
 	//      Additionally *strings.Builder impl has too many redundant checks (every buf.Write has copyCheck and
 	//      implicit growslice check in append)
 
-	/* TODO
 	// prepare buffer to minimize memallocs
-	buf.Grow(w)
-	*/
+	raw := buf.Advance(w)
+
+	j := uint(0)
 
 	if altFmt {
 		// Add leading 0x or 0X.
-		buf.WriteByte(charZero)
-		buf.WriteByte(digits[16])
+
+		//buf.WriteByte(charZero)
+		//buf.WriteByte(digits[16])
+
+		raw[0] = charZero
+		raw[1] = digits[16]
+
+		j = 2
 	}
 
 	// helps BCE below
 	s = s[:sz]
 
-	for i := 0; i < len(s); i++ {
+	for i := 0; i < len(s) && (j < uint(len(raw))); i++ {
 
 		// write inter-elements values if any
 		if withSpace && (i > 0) {
 
 			// Separate elements with a space.
-			buf.WriteByte(charSpace)
+
+			//buf.WriteByte(charSpace)
+
+			raw[j] = charSpace
+			j++
 
 			if altFmt {
 				// Add leading 0x or 0X for each element.
-				buf.WriteByte(charZero)
-				buf.WriteByte(digits[16])
+
+				//buf.WriteByte(charZero)
+				//buf.WriteByte(digits[16])
+
+				raw[j] = charZero
+				raw[j+1] = digits[16]
+
+				j += 2
 			}
 		}
 
 		// write byte as hex
 		c := s[i]
 
-		buf.WriteByte(digits[c>>4])   // high
-		buf.WriteByte(digits[c&0x0F]) // low
+		//buf.WriteByte(digits[c>>4])   // high
+		//buf.WriteByte(digits[c&0x0F]) // low
+
+		raw[j] = digits[c>>4]     // high
+		raw[j+1] = digits[c&0x0F] // low
+
+		j += 2
 	}
 
 	// Handle padding to the right.
@@ -597,7 +608,7 @@ func truncateString(s string, prec int) string {
 // DOC: For most values, width is the minimum number of runes to output, padding the formatted form with spaces if necessary.
 // SEE src/fmt/format.go::(*fmt).padString()
 //go:nosplit
-func padString(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, flags flags, width int) {
+func padString(buf *buffer /* *strings.Builder */, s string, flags flags, width int) {
 
 	if width <= 0 /* implies `width == absentValue` */ {
 		buf.WriteString(s)
@@ -625,7 +636,7 @@ func padString(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, s string, 
 // pad appends b to f.buf, padded on left (!f.minus) or right (f.minus).
 // DOC: see padString above
 //go:nosplit
-func pad(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, raw []byte, flags flags, width int) {
+func pad(buf *buffer /* *strings.Builder */, raw []byte, flags flags, width int) {
 
 	if width <= 0 /* implies `width == absentValue` */ {
 		buf.Write(raw)
@@ -651,7 +662,7 @@ func pad(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, raw []byte, flag
 }
 
 //go:nosplit
-func writePadding(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, n int, flags flags) {
+func writePadding(buf *buffer /* *strings.Builder */, n int, flags flags) {
 
 	if n <= 0 { // No padding bytes needed.
 		return
@@ -664,15 +675,11 @@ func writePadding(buf *bytebufferpool.ByteBuffer /* *strings.Builder */, n int, 
 		padByte = charZero
 	}
 
-	/* TODO
 	// Make enough room for padding.
-	newLen := buf.Len() + n
-	buf.Grow(newLen)
-	*/
+	tail := buf.Advance(n)
 
-	// WARN this is very BAD code even taking into account the Grow() above,
-	//      need buf.Pad for max efficiency
-	for ; n > 0; n-- {
-		buf.WriteByte(padByte)
+	for j := 0; j < len(tail); /* BCE */ j++ {
+		//buf.WriteByte(padByte)
+		tail[j] = padByte
 	}
 }

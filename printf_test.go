@@ -35,7 +35,7 @@ func TestPrinterSprintf1(t *testing.T) {
 	t.Logf("%#v", countersCache.counters)
 	t.Logf("%#v", xfmtCache.cache)
 
-	for k, v := range xfmtCache.cache {
+	/*for k, v := range xfmtCache.cache {
 		t.Logf("%q => %#v", k, v)
-	}
+	}*/
 }

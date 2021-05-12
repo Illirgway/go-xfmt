@@ -21,7 +21,6 @@ package xfmt
 import (
 	"errors"
 	"fmt"
-	"github.com/valyala/bytebufferpool"
 	"testing"
 )
 
@@ -38,7 +37,8 @@ var errTestCaseFormatFail = errors.New("format fail (not ok)")
 func (tcase *tokenTestCase) run( /*t *testing.T*/ ) error {
 
 	//var buf strings.Builder
-	var buf bytebufferpool.ByteBuffer
+	//var buf bytebufferpool.ByteBuffer
+	var buf buffer
 
 	/*if ok := tcase.token.format(&buf, tcase.args); !ok {
 		return errTestCaseFormatFail

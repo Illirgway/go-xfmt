@@ -347,6 +347,8 @@ func doBenchmarkSprintf(b *testing.B, format string, args ...string) {
 		})
 	})
 
+	//b.Logf("%#v", bpool)
+
 	runtime.GC()
 
 	b.Run("fmt", func(bb *testing.B) {

@@ -12,3 +12,4 @@ vendor/modules.txt
 *.disasm
 *.log
 *.test.go
+*.bak
