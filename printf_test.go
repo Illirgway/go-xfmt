@@ -18,9 +18,13 @@
 
 package xfmt
 
-import "testing"
+import (
+	"bytes"
+	"runtime"
+	"testing"
+)
 
-// TODO
+//TODO
 
 // go test -count=1 -v -run "^TestPrinterSprintf1$"
 // go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestPrinterSprintf1$" 2> fmt.log
@@ -38,4 +42,115 @@ func TestPrinterSprintf1(t *testing.T) {
 	/*for k, v := range xfmtCache.cache {
 		t.Logf("%q => %#v", k, v)
 	}*/
+}
+
+// benchmarks
+// go test -bench "^BenchmarkLinearXfmtOnly$" -run "^$" -benchmem
+// go test -bench "^BenchmarkLinearXfmtOnly$" -run "^$" -benchmem -cpuprofile cpu.pprof -memprofile mem.pprof
+
+const (
+	linearBenchTypeSprintf = iota
+	linearBenchTypeFprintf
+)
+
+type linearBenchListItem struct {
+	name   string
+	typ    uint
+	format string
+	args   []string
+}
+
+func (e *linearBenchListItem) run(b *testing.B) {
+
+	prefix := "Sprintf"
+
+	if e.typ == linearBenchTypeFprintf {
+		prefix = "Fprintf"
+	}
+
+	name := prefix + e.name
+
+	runtime.GC()
+
+	b.Run(name, func(bb *testing.B) {
+
+		if e.typ == linearBenchTypeSprintf {
+
+			bb.ResetTimer()
+
+			for i := 0; i < bb.N; i++ {
+				_ = Sprintf(e.format, e.args...)
+			}
+
+			return
+		}
+
+		// linearBenchTypeFprintf
+
+		var buf bytes.Buffer
+
+		bb.ResetTimer()
+
+		for i := 0; i < bb.N; i++ {
+			_, _ = Fprintf(&buf, e.format, e.args...)
+		}
+
+	})
+}
+
+var linearBenchList = [...]linearBenchListItem{
+	{
+		"Padding",
+		linearBenchTypeSprintf,
+		"%16s",
+		[]string{tftc1arg5utf8MS_HnS},
+	},
+	{
+		"String",
+		linearBenchTypeSprintf,
+		"%s",
+		[]string{tftc1arg13str},
+	},
+	{
+		"TruncateString",
+		linearBenchTypeSprintf,
+		"%.4s",
+		[]string{tftc1arg14utf8cjklong},
+	},
+	{
+		"QuoteString",
+		linearBenchTypeSprintf,
+		"%q",
+		[]string{tftc1arg14utf8cjklong},
+	},
+	{
+		"PrefixedString",
+		linearBenchTypeSprintf,
+		"This is some meaningless prefix text that needs to be scanned %s",
+		[]string{tftc1arg5utf8MS_HnS},
+	},
+	{
+		"HexString",
+		linearBenchTypeSprintf,
+		"% #x",
+		[]string{tftc1arg15str},
+	},
+	{
+		"ManyArgs",
+		linearBenchTypeSprintf,
+		"%2s/%2s/%2s %s:%s:%s %s %s\n",
+		[]string{"3", "4", "5", "11", "12", "13", "hello", "world"},
+	},
+	{
+		"ManyArgs",
+		linearBenchTypeFprintf,
+		"%2s/%2s/%2s %s:%s:%s %s %s\n",
+		[]string{"3", "4", "5", "11", "12", "13", "hello", "world"},
+	},
+}
+
+func BenchmarkLinearXfmtOnly(b *testing.B) {
+	for i := 0; i < len(linearBenchList); i++ {
+		linearBenchList[i].run(b)
+	}
 }

@@ -356,7 +356,7 @@ func (token *token) format(buf *buffer /* *strings.Builder */, args []string) bo
 
 	// is width indirect?
 	if flags.has(flagIndirectWidth) {
-		// check is width arg exists
+		// check is width arg exist
 		if width >= len(args) {
 			badArgNum = true
 			buf.WriteString(badWidthString)
@@ -367,7 +367,7 @@ func (token *token) format(buf *buffer /* *strings.Builder */, args []string) bo
 			buf.WriteString(badWidthString)
 		}
 
-		// ... so in any case for indir width should mark as absent value
+		// ... so in any case indir width should be marked as absent value
 		width = absentValue
 	}
 
@@ -375,7 +375,7 @@ func (token *token) format(buf *buffer /* *strings.Builder */, args []string) bo
 
 	// is precision indirect?
 	if flags.has(flagIndirectPrec) {
-		// check is width arg exists
+		// check is prec arg exist
 		if prec >= len(args) {
 			badArgNum = true
 			buf.WriteString(badPrecString)
@@ -387,7 +387,7 @@ func (token *token) format(buf *buffer /* *strings.Builder */, args []string) bo
 			buf.WriteString(badPrecString)
 		}
 
-		// ... so in any case for indir prec should mark as absent prec
+		// ... so in any case indir prec should be marked as absent value
 		prec = absentValue
 	}
 
@@ -439,7 +439,7 @@ func fmtQuot(buf *buffer /* *strings.Builder */, s string, flags flags, width, p
 	if flags.has(flagAltFmt) && strconv.CanBackquote(s) {
 
 		// `go1.13: fmtQuot backquoteStr + s + backquoteStr does not escape`
-		padString(buf, backquoteStr+s+backquoteStr /* concatstring3 with tempBuf */, flags, width)
+		padString(buf, backquoteStr+s+backquoteStr /* concatstring3 with tempBuf on stack */, flags, width)
 
 		// NOTE concatstring3 with tempBuf use stack temp buffer with size 32 if enough or memallocated heap tmp buf if not
 

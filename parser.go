@@ -486,14 +486,16 @@ func pickNumValue(s string, start uint) (num int, j uint) {
 		return absentValue, end
 	}
 
-	for num, j = 0, start; (j < end) && ('0' <= s[j]) && (s[j] <= '9'); j++ {
+	// here `num` is default int zero value 0
+
+	for j = start; (j < end) && ('0' <= s[j]) && (s[j] <= '9'); j++ {
+
+		num = num*10 + int(s[j]-'0')
 
 		// check overflow
 		if num > maxNum {
 			return absentValue, end
 		}
-
-		num = num*10 + int(s[j]-'0')
 	}
 
 	if j == start { // digits is not found

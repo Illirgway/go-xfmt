@@ -29,6 +29,8 @@ type xfmt struct {
 	// NOTE small size struct, may be passed by value
 }
 
+var fmtprintbufpool bufferpool
+
 func (fmt *xfmt) bprint(args []string) (buf *buffer) {
 
 	// fast-paths
@@ -37,7 +39,7 @@ func (fmt *xfmt) bprint(args []string) (buf *buffer) {
 		return nil
 	}
 
-	buf = bpool.Get()
+	buf = fmtprintbufpool.Get()
 
 	// try to minimize memallocs
 	buf.Grow(fmt.minSize)

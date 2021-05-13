@@ -72,7 +72,7 @@ const (
 	tftc1arg12str               = "bNfwVErqVWy"
 	tftc1arg13str               = "13str"
 	tftc1arg14utf8cjklong       = "亁亃乧殖每箚馘馛馞﨎忰忲忴貎豉豒"
-	tftc1arg51str               = "0123456789abcdefgh"
+	tftc1arg15str               = "0123456789abcdefgh"
 )
 
 var adaptedFmtTestCases1 = [...]fmtTestCase{
@@ -400,7 +400,7 @@ func BenchmarkSprintfPrefixedString(b *testing.B) {
 
 // go test -bench "^BenchmarkSprintfHexString$" -run "^$"
 func BenchmarkSprintfHexString(b *testing.B) {
-	doBenchmarkSprintf(b, "% #x", tftc1arg51str)
+	doBenchmarkSprintf(b, "% #x", tftc1arg15str)
 }
 
 // go test -bench "^BenchmarkManyArgs$" -run "^$"
@@ -414,4 +414,52 @@ func BenchmarkManyArgs(b *testing.B) {
 	})
 }
 
-// TODO malloc tests
+// malloc tests
+//
+
+var mallocBuf bytes.Buffer
+
+type mallocTestCase struct {
+	desc   string
+	allocs uint
+	fn     func()
+}
+
+var mallocTestCases1 = [...]mallocTestCase{
+	{`Sprintf("")`, 0, func() { Sprintf(emptyString) }},
+	{`Sprintf("xfmt")`, 0, func() { Sprintf("xfmt") }},
+	{`Sprintf("%x")`, 1, func() { Sprintf("%x", tftc1arg11utf8cjkstr) }},
+	{`Sprintf("%s")`, 1, func() { Sprintf("%s", tftc1arg13str) }},
+	{`Sprintf("%x %x")`, 1, func() { Sprintf("%x %x", tftc1arg11utf8cjkstr, tftc1arg1strrnd) }},
+	{`Sprintf("%q")`, 1, func() { Sprintf("%q", tftc1arg12str) }},
+	{`Fprintf(buf, "%s")`, 0, func() {
+		mallocBuf.Reset()
+		Fprintf(&mallocBuf, "%s", tftc1arg13str)
+	}},
+	{`Fprintf(buf, "%x %x %x")`, 0, func() {
+		mallocBuf.Reset()
+		Fprintf(&mallocBuf, "%x %x %x", tftc1arg13str, tftc1arg15str, tftc1arg3short)
+	}},
+}
+
+// go test -count=1 -v -run "^TestAssertMallocs1$"
+func TestAssertMallocs1(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping malloc count in short mode")
+	}
+
+	for i := 0; i < len(mallocTestCases1); i++ {
+
+		tcase := &mallocTestCases1[i]
+
+		mallocs := testing.AllocsPerRun(100, tcase.fn)
+
+		if got, max := mallocs, float64(tcase.allocs); got > max {
+			t.Errorf("%s: got %v allocs, want <= %v", tcase.desc, got, max)
+		}
+	}
+}
+
+// TODO flags tests
+
+// TODO indir width and prec tests (startests) - should check for errors, no indir values are processing

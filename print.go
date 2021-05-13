@@ -19,9 +19,6 @@
 package xfmt
 
 import (
-	//"github.com/Illirgway/go-xruntime"
-	"github.com/valyala/bytebufferpool"
-
 	"io"
 	"os"
 )
@@ -40,19 +37,19 @@ var (
 	rawSpace = [1]byte{Space}
 	rawLF    = [1]byte{LF}
 
-	printBufPool bytebufferpool.Pool
+	stdprintbufpool bufferpool
 )
 
 // return value may be nil === no bytes written (empty buf)
 //go:nosplit
-func bprint(ln bool, s ...string) (buf *bytebufferpool.ByteBuffer) {
+func bprint(ln bool, s ...string) (buf *buffer) {
 
 	// fast-path
 	if len(s) == 0 {
 		return nil
 	}
 
-	buf = printBufPool.Get()
+	buf = stdprintbufpool.Get()
 
 	// TODO? once time before merge precalc size and preallocate if needed?
 
@@ -86,10 +83,11 @@ func sprint(ln bool, s ...string) (r string) {
 	}
 
 	// implicit copy []byte->string (runtime.slicebytetostring)
+	// WARN make string from buf BEFORE free buf
 	r = buf.String()
 
 	// should return buf to its pool
-	printBufPool.Put(buf)
+	buf.Free()
 
 	return r
 }
@@ -108,10 +106,11 @@ func fprint(w io.Writer, ln bool, s ...string) (n int, err error) {
 		return 0, nil
 	}
 
+	// should write buf before free it
 	n, err = w.Write(buf.Bytes())
 
 	// should return buf to its pool
-	printBufPool.Put(buf)
+	buf.Free()
 
 	return n, err
 }

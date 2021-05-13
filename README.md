@@ -9,19 +9,24 @@ This package is an almost drop-in replacement for std `fmt` package fns `*print`
 * `reflect` package is excluded, so no heavy typecast and conversions with implicit checks
 * `format` string value is parsed as tokens list' struct, suitable for caching
 * configurable caching of parsed format's tokens list' structs to avoid doing the same parsing job multiple times
-* reusable [byte buffer pool](https://github.com/valyala/bytebufferpool) (for simple `*print` functions 
-  for results building) + special `buffer` type with all of needed fns for `*printf` processing + with inplace subbuf for   
-  internal `fmtXxx` fns' - mostly used by similar to strconv.Append*(buf []byte) fns, e.g. strconv.AppendQuote)   
-  drastically reduces heap reallocate-and-copy ops during write of results to buffer byteslice
-* unnecessary memory allocations have been drastically reduced - there are no unnecessary allocations at all
+* special reusable `buffer` type with all needed fns for simple `*print` functions and `*printf` processing + 
+  with inplace subbuf for internal `fmtXxx` fns (mostly used by similar to strconv.Append*(buf []byte) fns, e.g. 
+  strconv.AppendQuote) drastically reduces heap reallocate-and-copy ops during write of results to buffer byteslice
+* unnecessary memory allocations have been significantly reduced - there are no unnecessary allocations at all
 * a lot of BCE optimizations performed (and many more needs to be done)
 * as a result, it is more faster and cheaper (approximately up to 2 times for both cpu and mem)
 
-## Status: _ALPHA_
-* **CAN'T BE USED IN PRODUCTION FOR NOW**
+## Status: _BETA_
+* **CAN BE USED IN PRODUCTION WITH CAUTION**
+* **tests from the original `fmt` package have been practically adapted** (all needed tests have been adapted)
+  - for now it fails only one test case **wrong args count (too few) with implicit `arg num` in the mid of the format 
+    varbs chain**: 
+    ```
+    adapted reorder test case 22 Sprintf("%s %[3]s %s", xfmt.SL{"1", "2"}) mismatch: want <1 %!s(BADINDEX) 2>, got <1 %!s(MISSING) %!s(MISSING)>
+    some tests finished with errors: 1 of 28
+    ```
 * finish up currently unfinished tests (printf_test)
-* adapted tests from the original `fmt` package are required
-* more tests are required (up to full code coverage: buffer_test, cache_test)
+* more tests are required (up to full code coverage: buffer_test, cache_test, parser_test)
 
 ## API
 It has the same subset of functions as the original `fmt` package, but with args of `string` type instead of 

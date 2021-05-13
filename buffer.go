@@ -42,19 +42,25 @@ const (
 
 type bufferpool struct {
 	pool sync.Pool // 32 or 64
-	//defaultSize uintptr
-	// always aligned on 64 boundary
-	//uses    uint64  // count of pool uses (=== count of issued buffers)
-	//sizeSum uint64  // ∑(X; n)
-	//maxSize uintptr // 32 or 64
+	/*
+		defaultSize uintptr
+		// always aligned on 64 boundary
+		uses    uint64  // count of pool uses (=== count of issued buffers)
+		sizeSum uint64  // ∑(X; n)
+		maxSize uintptr // 32 or 64
+	*/
 }
 
+/*
+// inlined
+//go:nosplit
 func newbufferpool() bufferpool {
 	return bufferpool{
 		//defaultSize: minBufDefaultSize,
 		//maxSize: minBufMaxSize << 1,
 	}
 }
+*/
 
 func (p *bufferpool) Get() (b *buffer) {
 
@@ -150,14 +156,14 @@ type buffer struct {
 	 */
 }
 
-var bpool = newbufferpool()
-
 // `Hacker's Delight`, $3.1
+// inlined
 //go:nosplit
 func roundUpToPowOf2(x uint, p uint) uint {
 	return (x + (p - 1)) & ((^p) + 1) // (x + (p - 1)) & (-p)
 }
 
+// inlined
 //go:nosplit
 func (b *buffer) init(p *bufferpool /*, sz uint*/) {
 
@@ -171,6 +177,7 @@ func (b *buffer) init(p *bufferpool /*, sz uint*/) {
 	b.p = p
 }
 
+// inlined
 //go:nosplit
 func (b *buffer) reset( /*maxSz uint*/ ) {
 
@@ -182,6 +189,7 @@ func (b *buffer) reset( /*maxSz uint*/ ) {
 	}
 }
 
+// inlined
 //go:nosplit
 func (b *buffer) Free() {
 	b.p.Put(b)
@@ -193,10 +201,15 @@ func (b *buffer) Len() int {
 	return len(b.buf)
 }
 
+// inlined
+//go:nosplit
 func (b *buffer) Cap() int {
 	return cap(b.buf)
 }
 
+// NOTE `uint` is used instead of `int` below to help BCE
+
+// Grow grows internal buffer `buf` without reslicing (just increases the capacity)
 // inlined
 //go:nosplit
 func (b *buffer) Grow(n int) {
@@ -252,40 +265,47 @@ func (b *buffer) grow(sz int) {
 	b.buf = buf
 }
 
-//func (wb *wbuffer) Grow(n int)
-
+// inlined
 //go:nosplit
 func (b *buffer) Write(p []byte) {
-	m := b.advance(len(p))
-	// NOTE after advance() buf always have enough cap
-	copy(b.buf[m:], p)
+	// NOTE after advance() buf always has enough cap
+	if m := b.advance(len(p)); m < len(b.buf) /* BCE hint, always is `true` except for `len(p) == 0` */ {
+		copy(b.buf[m:], p)
+	}
 }
 
+// inlined
 //go:nosplit
 func (b *buffer) WriteByte(c byte) {
-	m := b.advance(1)
-	// NOTE after advance() buf always have enough cap
-	b.buf[m] = c
+	// NOTE after advance() buf always has enough cap
+	if m := b.advance(1); m < len(b.buf) /* BCE hint, always is `true` */ {
+		b.buf[m] = c
+	}
 }
 
+// inlined
 //go:nosplit
 func (b *buffer) WriteString(s string) {
-	m := b.advance(len(s))
-	// NOTE after advance() buf always have enough cap
-	copy(b.buf[m:], s)
+	// NOTE after advance() buf always has enough cap
+	if m := b.advance(len(s)); m < len(b.buf) /* BCE hint, always is `true` except for `s == ""` */ {
+		copy(b.buf[m:], s)
+	}
 }
 
 // NOTE implicit copy
+// inlined
 //go:nosplit
 func (b *buffer) String() string {
 	return string(b.buf)
 }
 
+// inlined
 //go:nosplit
 func (b *buffer) Bytes() []byte {
 	return b.buf
 }
 
+// inlined
 //go:nosplit
 func (b *buffer) TempBuf() []byte {
 	return b.inpbuf[:0]

@@ -85,6 +85,8 @@ func (tc *thresholdCounters) Count(key string) (count uint) {
 	return count
 }
 
+// thread-safe
+//go:nosplit
 func (tc *thresholdCounters) Delete(key string) {
 	tc.lock.Lock()
 	delete(tc.counters, key)
