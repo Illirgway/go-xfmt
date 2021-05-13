@@ -18,4 +18,26 @@
 
 package xfmt
 
+import (
+	"testing"
+	"unsafe"
+)
+
 //TODO
+
+// go test -count=1 -v -run "^TestBufferSizeClassAutoAdjustment1$"
+// NOTE `set GOARCH=386` to test on x32
+func TestBufferSizeClassAutoAdjustment1(t *testing.T) {
+
+	var b buffer
+
+	if got := unsafe.Sizeof(b); got != bufferSizeClass {
+		t.Fatalf("buffer size mismatch with its size-class: want %d, got %d", bufferSizeClass, got)
+	}
+
+	if off := unsafe.Offsetof(b.inpbuf); off != bufferHeaderSize {
+		t.Fatalf("buffer header size mismatch: want %d, got %d", bufferHeaderSize, off)
+	}
+
+	t.Log(unsafe.Alignof(b))
+}

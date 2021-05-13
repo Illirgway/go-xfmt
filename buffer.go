@@ -27,9 +27,12 @@ import (
 
 const (
 	// INPlace BUFfer
-	is64bit                 = (^uint(0)) >> 63 // 0 for x32, 1 for x64
-	cpucacheline            = 1 << 6           // 2^6 == 64 bytes
-	wbufferInpBufSize       = 2 * cpucacheline // - ((is64bit + 1) /* *4*4 */ << (2 + 2) /* => {x32: 16, x64: 32} */ )
+	is64bit                 = (^uint(0)) >> 63                   // 0 for x32, 1 for x64
+	cpucacheline            = 1 << 6                             // 2^6 == 64 bytes
+	bufferSizeClassId       = 9                                  // SEE src/runtime/sizeclasses.go
+	bufferSizeClass         = 128                                // tail waste = 0 and is 2 * cpucacheline
+	bufferHeaderSize        = (3 + 1) * (4 << is64bit)           // => {x32: 16, x64: 32}
+	inplaceBufSize          = bufferSizeClass - bufferHeaderSize // => {x32: 128 - 16 = 112, x64: 128 - 32 = 96}
 	minBufDefaultSize       = cpucacheline
 	minBufMaxSize           = minBufDefaultSize << 1
 	usesCounterThreshold    = 5000
@@ -37,6 +40,9 @@ const (
 )
 
 const (
+	// NOTE "Go does not manage the large allocations with a local cache. Those allocations, greater than 32kb,
+	//       are rounded up to the page size and the pages are allocated directly to the heap."
+	// SEE  https://medium.com/a-journey-with-go/go-memory-management-and-allocation-a7396d430f44
 	maxAllowedBufSize = 16 << 10 // 16k; 4 times less than the similar value in the `fmt` package
 )
 
@@ -144,16 +150,17 @@ func (p *bufferpool) Put(b *buffer) {
 }
 
 // buffer
+// TODO adjust size of struct to suitable malloc size-class (using the size of the internal buffer)
 type buffer struct {
-	p   *bufferpool
-	buf []byte
+	p   *bufferpool // 4 or 8 bytes
+	buf []byte      // 3 * (4 or 8) bytes
 	// NOTE total size of above fields = sizeof(uintptr) * (1 /* Ptr */ + 3 /* SliceHeader */) =
-	//      = 4 * sizeof(uintptr) ==> {x32: 4 * 4 = 16, x64: 4 * 8 = 32}
-	//inpbuf *fastrawbuf
+	//      = 4 * sizeof(uintptr) ==> {x32: 4 * 4 = 16, x64: 4 * 8 = 32}; delta = 32 - 16 = 16
 
-	inpbuf [wbufferInpBufSize]byte
-	/*// Total size is always === cpucacheline
-	 */
+	//inpbuf *fastrawbuf
+	inpbuf [inplaceBufSize]byte
+
+	// Total size === bufferSizeClass
 }
 
 // `Hacker's Delight`, $3.1
