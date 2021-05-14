@@ -92,6 +92,8 @@ func (p *bufferpool) Get() (b *buffer) {
 //       defSize(n) = (defSize(n - 1) * (n - 1) + curSize) / n = (defSize(n - 1) * n - defSize(n - 1) + curSize) / n =
 //           = defSize(n - 1) + (curSize - defSize(n - 1)) / n
 // NOTE lim{n -> +∞} (n / (n + 1)) = 1; lim{n -> +∞}( (curSize - defSize(n - 1)) / n ) = 0 (because curSize < M ==> defSize < N(M))
+// TODO SEE https://neerc.ifmo.ru/wiki/index.php?title=%D0%9D%D0%B5%D1%80%D0%B0%D0%B2%D0%B5%D0%BD%D1%81%D1%82%D0%B2%D0%BE_%D0%9C%D0%B0%D1%80%D0%BA%D0%BE%D0%B2%D0%B0#.D0.9D.D0.B5.D1.80.D0.B0.D0.B2.D0.B5.D0.BD.D1.81.D1.82.D0.B2.D0.BE_.D0.A7.D0.B5.D0.B1.D1.8B.D1.88.D0.B5.D0.B2.D0.B0
+// PPSL use `Markov's inequality` to filter curSizes
 func (p *bufferpool) Put(b *buffer) {
 
 	/*if b == nil {
@@ -101,8 +103,8 @@ func (p *bufferpool) Put(b *buffer) {
 	/*
 		curSize, maxSize := uint(b.Len()), uint(maxAllowedBufSize)
 
-		// don't take into account extra large buffers
-		if curSize <= maxSize {
+		// don't take into account extra large buffers and unused buffers
+		if (curSize > 0) && (curSize <= maxSize) {
 
 			// guarded from too low size values
 			if curSize < minBufDefaultSize {

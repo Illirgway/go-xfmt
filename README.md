@@ -7,7 +7,7 @@ This package is an almost drop-in replacement for std `fmt` package fns `*print`
 `Errorf` with advantages over the `fmt` package, however only exclusively for args of `string` type 
 (or cast to this type). Advantages:
 * `reflect` package is excluded, so no heavy typecast and conversions with implicit checks
-* `format` string value is parsed as tokens list' struct, suitable for caching
+* `format` string value is first parsed as tokens list' struct, suitable for caching
 * configurable caching of parsed format's tokens list' structs to avoid doing the same parsing job multiple times
 * special reusable `buffer` type with all needed fns for simple `*print` functions and `*printf` processing + 
   with inplace subbuf for internal `fmtXxx` fns (mostly used by similar to strconv.Append*(buf []byte) fns, e.g. 
@@ -19,8 +19,8 @@ This package is an almost drop-in replacement for std `fmt` package fns `*print`
 ## Status: _BETA_
 * **CAN BE USED IN PRODUCTION WITH CAUTION**
 * **tests from the original `fmt` package have been practically adapted** (all needed tests have been adapted)
-  - for now it fails only one test case **wrong args count (too few) with implicit `arg num` in the mid of the format 
-    varbs chain**: 
+  - for now it fails only one test case: **wrong args count (too few) with implicit `arg num` in the mid of the format 
+    verbs' chain**: 
     ```
     adapted reorder test case 22 Sprintf("%s %[3]s %s", xfmt.SL{"1", "2"}) mismatch: want <1 %!s(BADINDEX) 2>, got <1 %!s(MISSING) %!s(MISSING)>
     some tests finished with errors: 1 of 28
@@ -84,6 +84,42 @@ thread-safe (atomic r/w).
   don't add spaces between args et all
 * some errors mark (especially for errors related to the tail of `format`) of formatting fns may differ from such  
   returned by original `fmt` format fns
+
+## Comparison benchmarks
+
+```
+go1.13> go test -bench=. -run "^$" -benchmem
+
+goarch: amd64
+pkg: github.com/Illirgway/go-xfmt
+
+BenchmarkSprintfPadding/xfmt-6          73360842    16.1 ns/op    32 B/op    1 allocs/op
+BenchmarkSprintfPadding/fmt-6           30769230    38.5 ns/op    48 B/op    2 allocs/op
+
+BenchmarkSprintfEmpty/xfmt-6            445269012   2.69 ns/op     0 B/op    0 allocs/op
+BenchmarkSprintfEmpty/fmt-6             164158686   7.75 ns/op     0 B/op    0 allocs/op
+
+BenchmarkSprintfString/xfmt-6           98907889    12.8 ns/op     5 B/op    1 allocs/op
+BenchmarkSprintfString/fmt-6            42857142    26.2 ns/op    21 B/op    2 allocs/op
+
+BenchmarkSprintfTruncateString/xfmt-6   70339974    17.7 ns/op    16 B/op    1 allocs/op
+BenchmarkSprintfTruncateString/fmt-6    26666666    42.3 ns/op    32 B/op    2 allocs/op
+
+BenchmarkSprintfQuoteString/xfmt-6      9523808      127 ns/op    64 B/op    1 allocs/op
+BenchmarkSprintfQuoteString/fmt-6       8450703      141 ns/op    80 B/op    2 allocs/op
+
+BenchmarkSprintfPrefixedString/xfmt-6   62186904     19.4 ns/op   80 B/op    1 allocs/op
+BenchmarkSprintfPrefixedString/fmt-6    29268291     40.4 ns/op   96 B/op    2 allocs/op
+
+BenchmarkSprintfHexString/xfmt-6        49999999     24.7 ns/op    96 B/op   1 allocs/op
+BenchmarkSprintfHexString/fmt-6         30000000     39.3 ns/op   112 B/op   2 allocs/op
+
+BenchmarkManyArgs-6                     23529411     55.7 ns/op     0 B/op   0 allocs/op
+
+```
+
+===> fmt.Sprintf always has at least `1 + n` memallocs, where n is count of args of non-interface type
+(and 1 is implicit bakary's copying during []byte buf -> string conversion)
 
 ## Contributing
 

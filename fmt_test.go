@@ -354,7 +354,11 @@ func doBenchmarkSprintf(b *testing.B, format string, args ...string) {
 	b.Run("fmt", func(bb *testing.B) {
 		bb.ResetTimer()
 		bb.RunParallel(func(pb *testing.PB) {
+
 			for pb.Next() {
+
+				// NOTE in real scenarios `string` always cast to `interface{}` therefore it
+				//      must be taken into account in the benchs
 
 				if len(args) > 0 {
 					for i, s := range args {
@@ -444,6 +448,7 @@ var mallocTestCases1 = [...]mallocTestCase{
 
 // go test -count=1 -v -run "^TestAssertMallocs1$"
 func TestAssertMallocs1(t *testing.T) {
+
 	if testing.Short() {
 		t.Skip("skipping malloc count in short mode")
 	}

@@ -97,6 +97,24 @@ var countersCache thresholdCounters
 
 //
 
+// TODO? open-address hash table (cuckoo hashing with O(1) worst case lookup time) instead of map for Get speed up
+// SEE https://github.com/tidwall/rhh
+// SEE https://en.wikipedia.org/wiki/Hash_table#Robin_Hood_hashing
+// SEE https://en.wikipedia.org/wiki/Cuckoo_hashing
+// SEE https://www.geeksforgeeks.org/cuckoo-hashing/ - "Cuckoo hashing ... guarantees O(1) worst case lookup time!"
+// SEE https://neerc.ifmo.ru/wiki/index.php?title=%D0%A5%D0%B5%D1%88%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5_%D0%BA%D1%83%D0%BA%D1%83%D1%88%D0%BA%D0%B8
+// SEE https://en.wikipedia.org/wiki/Bloom_filter
+// SEE https://neerc.ifmo.ru/wiki/index.php?title=%D0%A4%D0%B8%D0%BB%D1%8C%D1%82%D1%80_%D0%91%D0%BB%D1%83%D0%BC%D0%B0
+// SEE https://neerc.ifmo.ru/wiki/index.php?title=%D0%98%D0%B4%D0%B5%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D0%B5_%D1%85%D0%B5%D1%88%D0%B8%D1%80%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D0%B5
+// SEE Knuth T.3 $6.4 (see Brent fix, p.565 - Richard P. Brent fix)
+// SEE https://thedeemon.livejournal.com/83496.html - robin hood caching
+// SEE https://dspace.spbu.ru/bitstream/11701/10808/1/Algoritmy_indeksirovaniya_dlya_pamyati_PCM.pdf
+// SEE https://habr.com/ru/post/267855/
+// SEE !!! http://citforum.ck.ua/programming/theory/sorting/sorting2.shtml#4_1_3 !!! TODO
+//     https://intuit.ru/studies/courses/648/504/lecture/11469?page=2
+//     https://ppt-online.org/227531 (opt. algo A2, p. 27)
+//     but use heaptree (tree backed as an array)
+
 // INFO Use unsafe.Pointer instead of direct type for cache map to apply atomic.LoadPointer instead of RWLock usage
 //      This is necessary because up to ~20% of the execution time is spent on RLock / RUnlock
 //      Due to the fact that adding to the cache is a very rare operation with a certain finite number of times

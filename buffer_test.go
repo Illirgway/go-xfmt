@@ -41,3 +41,21 @@ func TestBufferSizeClassAutoAdjustment1(t *testing.T) {
 
 	t.Log(unsafe.Alignof(b))
 }
+
+// go test -count=1 -v -run "^TestUnusedBufferBakAryLeakage1$"
+func TestUnusedBufferBakAryLeakage1(t *testing.T) {
+
+	var b buffer
+
+	// DOC To compute the number of allocations, the function will first be run once as a warm-up
+	mallocs := testing.AllocsPerRun(100, func() {
+		b.init(nil)
+		b.reset()
+	})
+
+	if mallocs > 0 {
+		t.Fatalf("unused buffer bak ary leakage has been detected: %v", mallocs)
+	}
+}
+
+// TODO add similar test for b.Free -> bufferpool.Put(b)
