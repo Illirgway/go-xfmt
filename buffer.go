@@ -196,6 +196,9 @@ func (b *buffer) reset( /*maxSz uint*/ ) {
 	} else {
 		b.buf = b.buf[:0]
 	}
+
+	// detach buffer from pool
+	b.p = nil
 }
 
 // inlined
@@ -240,6 +243,7 @@ func (b *buffer) advance(n int) (m int) {
 	sz := n + m /* len(b.buf) */
 
 	if sz > cap(b.buf) {
+		// sz === len(b.buf) + n
 		b.grow(sz)
 	}
 
@@ -266,7 +270,7 @@ func (b *buffer) grow(sz int) {
 	//  => n = sz - len > cap - len >= 0 ==> sz > cap >= 0 ==> sz > 0
 	// cap + sz = cap + len + n <= 2 * cap + n
 	// len + n > cap ==> cap + cap < cap + (len + n) <= cap + cap + n
-	// ==> 2 * cap < cap + sz <= 2 * cap + n
+	// ==> 2 * cap < cap + sz == cap + len + n <= 2 * cap + n
 	buf := make([]byte, len(b.buf), cap(b.buf)+sz)
 
 	copy(buf, b.buf)

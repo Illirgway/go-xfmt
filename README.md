@@ -25,8 +25,8 @@ This package is an almost drop-in replacement for std `fmt` package fns `*print`
     adapted reorder test case 22 Sprintf("%s %[3]s %s", xfmt.SL{"1", "2"}) mismatch: want <1 %!s(BADINDEX) 2>, got <1 %!s(MISSING) %!s(MISSING)>
     some tests finished with errors: 1 of 28
     ```
-* finish up currently unfinished tests (printf_test)
-* more tests are required (up to full code coverage: buffer_test, cache_test, parser_test)
+* finish up currently unfinished tests (buffer_test, printf_test)
+* more tests are required (up to full code coverage: cache_test, parser_test)
 
 ## API
 It has the same subset of functions as the original `fmt` package, but with args of `string` type instead of 
@@ -118,8 +118,8 @@ BenchmarkManyArgs-6                     23529411     55.7 ns/op     0 B/op   0 a
 
 ```
 
-===> fmt.Sprintf always has at least `1 + n` memallocs, where n is count of args of non-interface type
-(and 1 is implicit bakary's copying during []byte buf -> string conversion)
+*fmt.Sprintf always has at least `1 + n` memallocs, where `n` is a count of fn's args of non-interface 
+type (and 1 is implicit bakary's copying during []byte buf -> string conversion)*
 
 ## Contributing
 

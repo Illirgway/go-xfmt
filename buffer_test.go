@@ -25,6 +25,10 @@ import (
 
 //TODO
 
+// buffer
+
+// go test -count=1 -v -run "^TestBuffer"
+
 // go test -count=1 -v -run "^TestBufferSizeClassAutoAdjustment1$"
 // NOTE `set GOARCH=386` to test on x32
 func TestBufferSizeClassAutoAdjustment1(t *testing.T) {
@@ -42,8 +46,206 @@ func TestBufferSizeClassAutoAdjustment1(t *testing.T) {
 	t.Log(unsafe.Alignof(b))
 }
 
-// go test -count=1 -v -run "^TestUnusedBufferBakAryLeakage1$"
-func TestUnusedBufferBakAryLeakage1(t *testing.T) {
+// go test -count=1 -v -run "^TestBufferInitRelease1$"
+func TestBufferInitRelease1(t *testing.T) {
+
+	var (
+		b buffer
+		p bufferpool
+	)
+
+	// init
+
+	b.init(nil)
+
+	if b.buf == nil {
+		t.Fatal("buffer backary is nil")
+	}
+
+	if l := b.Len(); l != 0 {
+		t.Fatalf("buffer buf size is not zero: %d", l)
+	}
+
+	if c := b.Cap(); c != minBufDefaultSize {
+		t.Fatalf("buffer buf wrong initial capacity: got %d, want %d", c, minBufDefaultSize)
+	}
+
+	oldBuf := b.buf
+
+	if b.p != nil {
+		t.Fatal("buffer p ptr must be nil but isn't")
+	}
+
+	b.init(&p)
+
+	if ptr := &p; b.p != ptr {
+		t.Fatalf("buf init error: p must be %#v, got %#v", ptr, b.p)
+	}
+
+	if !IsIdenticalByteSlice(oldBuf, b.buf) {
+		t.Fatalf("b.buf bakary mismatch: want %#v, got %#v", oldBuf, b.buf)
+	}
+
+	// release
+
+	var data = []byte("some data")
+
+	b.buf = append(b.buf, data...)
+
+	oldCap := cap(b.buf)
+
+	b.reset()
+
+	if len(b.buf) != 0 {
+		t.Fatalf("buf length after reset != 0: %d (%#v)", len(b.buf), b.buf)
+	}
+
+	if c := b.Cap(); oldCap != c {
+		t.Fatalf("buf cap mismatch (lost) after Free: want %d, got %d", oldCap, c)
+	}
+
+	if !IsEqualByteSlicesBakAry(oldBuf, b.buf) {
+		t.Fatalf("wrong buf bakary after free: want %#v, got %#v", oldBuf, b.buf)
+	}
+
+	if b.p != nil {
+		t.Fatalf("b pool has not detached: %#v", b.p)
+	}
+
+	b.buf = make([]byte, 0, maxAllowedBufSize+10)
+
+	b.reset()
+
+	if b.buf != nil {
+		t.Fatalf("buffer extra large bakary preserved after reset: %#v", b.buf)
+	}
+}
+
+// go test -count=1 -v -run "^TestBufferStdFlow1$"
+func TestBufferStdFlow1(t *testing.T) {
+
+	const (
+		carstr  = "prefix\n"
+		midstr  = "string with spaces"
+		cdrstr  = "\tsuffix"
+		midchar = '\b'
+
+		resultstr = carstr + midstr + string(midchar) + cdrstr
+
+		rawbytestring = "\n\nbyteslice\n"
+		finalresult   = resultstr + rawbytestring
+	)
+
+	var (
+		rawbytes = []byte(rawbytestring)
+	)
+
+	var b buffer
+
+	// init has already tested above
+	b.init(nil)
+
+	sz := len(resultstr)
+
+	b.Grow(sz)
+
+	if cap(b.buf) != minBufDefaultSize {
+		t.Fatalf("buffer.Grow fails, mismatch cap: want %d, got %d", sz, cap(b.buf))
+	}
+
+	if c := b.Cap(); c != cap(b.buf) {
+		t.Fatalf("buffer.Cap mismatch result: want %d, got %d", c, cap(b.buf))
+	}
+
+	b.WriteString(carstr)
+	b.WriteString(midstr)
+	b.WriteByte(midchar)
+	b.WriteString(cdrstr)
+
+	if s := b.String(); s != resultstr {
+		t.Fatalf("buffer write fns fail, mismatch result: want %s, got %s", resultstr, s)
+	}
+
+	b.Write(rawbytes)
+
+	if s := b.String(); s != finalresult {
+		t.Fatalf("buffer.Write fails with mismatch result: want %s, got %s", finalresult, s)
+	}
+
+	if l := b.Len(); l != len(b.buf) {
+		t.Fatalf("buffer.Len unexpected mismatch result: want %d, got %d", len(b.buf), l)
+	}
+
+	if c, w := b.Cap(), minBufDefaultSize; c != w {
+		t.Fatalf("unecessary buffer cap after Write: want %d, got %d", w, c)
+	}
+
+	const (
+		advance      = "thisisadbvancestring"
+		finadvresult = finalresult + advance
+	)
+
+	oldCap := b.Cap()
+
+	tail := b.Advance(len(advance))
+
+	if len(tail) != len(advance) {
+		t.Fatalf("buffer.Advance error - mismatch len: want %d, got %d", len(advance), len(tail))
+	}
+
+	if c, w := b.Cap(), oldCap+len(finalresult)+len(advance); c != w {
+		t.Fatalf("unecessary buffer cap after Advance: want %d, got %d", w, c)
+	}
+
+	for i := 0; i < len(advance); i++ {
+		tail[i] = advance[i]
+	}
+
+	if s := b.String(); s != finadvresult {
+		t.Fatalf("buffer.Advance error: write to advance tail has mismatch result: want %s, got %s", finadvresult, s)
+	}
+
+	if bb := b.Bytes(); !IsIdenticalByteSlice(bb, b.buf) {
+		t.Fatalf("buffer.Bytes returns mismatch bakary: want %#v, got %#v", b.buf, bb)
+	}
+
+	oldCap = b.Cap()
+
+	// tempbuf
+	tb := b.TempBuf()
+
+	if len(tb) != 0 {
+		t.Fatalf("wrong temp buf len: %d (want 0)", len(tb))
+	}
+
+	if c := cap(tb); c != inplaceBufSize {
+		t.Fatalf("wrong temp buf cap: want %d got %d", inplaceBufSize, c)
+	}
+
+	if !IsIdenticalByteSlice(tb, b.inpbuf[:0]) {
+		t.Fatalf("unexpected temp buf slice bakary ptr: want %p, got %p", &b.inpbuf, &tb[:1][0])
+	}
+
+	b.reset()
+
+	if s := b.String(); s != "" {
+		t.Fatalf("buffer.reset fails: buf is not empty: %#v", b.buf)
+	}
+
+	if c := b.Cap(); oldCap != c {
+		t.Fatalf("buffer.reset unexpectedly change buf cap: want %d, got %d", oldCap, c)
+	}
+
+	b.reset()
+}
+
+// pool
+
+// issues
+
+// go test -count=1 -v -run "^TestUnusedBufferBakAryLeakage"
+
+func TestUnusedBufferBakAryLeakage(t *testing.T) {
 
 	var b buffer
 
@@ -58,4 +260,16 @@ func TestUnusedBufferBakAryLeakage1(t *testing.T) {
 	}
 }
 
-// TODO add similar test for b.Free -> bufferpool.Put(b)
+func TestUnusedBufferBakAryLeakagePool(t *testing.T) {
+
+	var p bufferpool
+
+	mallocs := testing.AllocsPerRun(100, func() {
+		b := p.Get()
+		b.Free()
+	})
+
+	if mallocs > 0 {
+		t.Fatalf("unused pool buffer bak ary leakage has been detected: %v", mallocs)
+	}
+}

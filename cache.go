@@ -163,7 +163,7 @@ func (c *formatCache) Set(format string, fmt xfmt) {
 
 	if oldCache != nil {
 
-		// last check for key's value existence
+		// last check for key's existence
 		if _, has := oldCache[format]; has {
 			// format value already is in cache
 			return
