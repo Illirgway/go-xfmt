@@ -185,4 +185,12 @@ func (c *formatCache) Set(format string, fmt xfmt) {
 	atomic.StorePointer(&c.cache, *(*unsafe.Pointer)(unsafe.Pointer(&newCache)))
 }
 
+// thread-safe
+// inlined
+//go:nosplit
+func (c *formatCache) Len() int {
+	cache := atomic.LoadPointer(&c.cache)
+	return len(*((*formatCacheMap)((unsafe.Pointer)(&cache))))
+}
+
 var xfmtCache formatCache

@@ -25,6 +25,8 @@ import (
 )
 
 // TODO replace `by value` xfmt by clever `by ptr` *xfmt (should not to do unnecessary heapalloc for xfmt in case of CacheDisabled)
+//      hint: use implicit `pxfmt := new(xfmt)` in the right place (and next `*pxfmt = xfmt`) to avoid explicit unwanted one
+//      in wrong place
 
 // NOTE xfmt is for now by value
 func forgeXfmt(format string) (xfmt xfmt) {

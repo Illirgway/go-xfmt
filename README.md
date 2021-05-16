@@ -16,17 +16,17 @@ This package is an almost drop-in replacement for std `fmt` package fns `*print`
 * a lot of BCE optimizations performed (and many more needs to be done)
 * as a result, it is more faster and cheaper (approximately up to 2 times for both cpu and mem)
 
-## Status: _BETA_
-* **CAN BE USED IN PRODUCTION WITH CAUTION**
-* **tests from the original `fmt` package have been practically adapted** (all needed tests have been adapted)
+## Status: _RC1_
+* **Can be used in production that has its own internal tests**
+* **all the needed tests from the original `fmt` package have been adapted**
   - for now it fails only one test case: **wrong args count (too few) with implicit `arg num` in the mid of the format 
     verbs' chain**: 
     ```
     adapted reorder test case 22 Sprintf("%s %[3]s %s", xfmt.SL{"1", "2"}) mismatch: want <1 %!s(BADINDEX) 2>, got <1 %!s(MISSING) %!s(MISSING)>
     some tests finished with errors: 1 of 28
     ```
-* finish up currently unfinished tests (buffer_test, printf_test)
-* more tests are required (up to full code coverage: cache_test, parser_test)
+* finish up currently unfinished tests (format_test - testing for equality of the results with the `fmt` package' fns)
+* more tests are required (up to full code coverage with all of the edge and special cases)
 
 ## API
 It has the same subset of functions as the original `fmt` package, but with args of `string` type instead of 
@@ -84,6 +84,10 @@ thread-safe (atomic r/w).
   don't add spaces between args et all
 * some errors mark (especially for errors related to the tail of `format`) of formatting fns may differ from such  
   returned by original `fmt` format fns
+
+### Limitations
+
+Can't be used in Google App Engine' apps for now due to usage of `unsafe` package
 
 ## Comparison benchmarks
 

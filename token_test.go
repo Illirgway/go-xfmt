@@ -618,10 +618,10 @@ var tokenTestCases1 = [...]tokenTestCase{
 	},
 }
 
-// go test -count=1 -v -run "^TestTokenCases1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestTokenCases1$" 2> fmt.log
+// go test -count=1 -v -run "^TestTokenCases$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestTokenCases$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestTokenCases1(t *testing.T) {
+func TestTokenCases(t *testing.T) {
 
 	nerrs, sz := 0, len(tokenTestCases1)
 

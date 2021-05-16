@@ -19,7 +19,11 @@
 package xfmt
 
 import (
+	"fmt"
+	"math/rand"
+	"sync"
 	"testing"
+	"time"
 	"unsafe"
 )
 
@@ -29,9 +33,9 @@ import (
 
 // go test -count=1 -v -run "^TestBuffer"
 
-// go test -count=1 -v -run "^TestBufferSizeClassAutoAdjustment1$"
+// go test -count=1 -v -run "^TestBufferSizeClassAutoAdjustment$"
 // NOTE `set GOARCH=386` to test on x32
-func TestBufferSizeClassAutoAdjustment1(t *testing.T) {
+func TestBufferSizeClassAutoAdjustment(t *testing.T) {
 
 	var b buffer
 
@@ -46,8 +50,8 @@ func TestBufferSizeClassAutoAdjustment1(t *testing.T) {
 	t.Log(unsafe.Alignof(b))
 }
 
-// go test -count=1 -v -run "^TestBufferInitRelease1$"
-func TestBufferInitRelease1(t *testing.T) {
+// go test -count=1 -v -run "^TestBufferInitRelease$"
+func TestBufferInitRelease(t *testing.T) {
 
 	var (
 		b buffer
@@ -121,8 +125,8 @@ func TestBufferInitRelease1(t *testing.T) {
 	}
 }
 
-// go test -count=1 -v -run "^TestBufferStdFlow1$"
-func TestBufferStdFlow1(t *testing.T) {
+// go test -count=1 -v -run "^TestBufferStdFlow$"
+func TestBufferStdFlow(t *testing.T) {
 
 	const (
 		carstr  = "prefix\n"
@@ -142,7 +146,7 @@ func TestBufferStdFlow1(t *testing.T) {
 
 	var b buffer
 
-	// init has already tested above
+	// init has benn already tested above
 	b.init(nil)
 
 	sz := len(resultstr)
@@ -240,6 +244,156 @@ func TestBufferStdFlow1(t *testing.T) {
 }
 
 // pool
+
+func testPoolBufRW(p *bufferpool, mark string) error {
+
+	const n = 20
+
+	for i := 0; i < n; i++ {
+
+		b := p.Get()
+
+		want := fmt.Sprintf("value: %s %-+ d", mark, i)
+
+		b.WriteString("value: ")
+		b.WriteString(mark)
+		b.WriteByte(' ')
+		b.WriteString(fmt.Sprintf("%-+ d", i))
+
+		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+
+		if s := b.String(); s != want {
+			return fmt.Errorf("seq r/w unexpected result: want <%s>, got <%s>", want, s)
+		}
+
+		b.Free()
+	}
+
+	return nil
+}
+
+// go test -count=1 -v -run "^TestPoolSerialFlow$"
+func TestPoolSerialFlow(t *testing.T) {
+
+	var p bufferpool
+
+	defer func() {
+		if err := recover(); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	// test nil checking
+	p.Put(nil)
+
+	//
+
+	b := p.Get()
+
+	if b.p != &p {
+		t.Fatalf("buffer p wrong value after getting from pool: watn %p, got %p", &p, b.p)
+	}
+
+	oldB := b
+
+	const (
+		sv1 = "some string\n"
+		sv2 = "\tanother line of text\n"
+
+		resultsv = sv1 + sv2
+	)
+
+	b.WriteString(sv1)
+	b.WriteString(sv2)
+
+	if s := b.String(); s != resultsv {
+		t.Fatalf("buffer.WriteString has been failed, mismatch result: want %s, got %s", resultsv, s)
+	}
+
+	oldBuf := b.Bytes()
+	oldCap := b.Cap()
+
+	b.Free()
+
+	// b postusage ONLY for tests purposes
+
+	if b.p != nil {
+		t.Fatalf("wrong buffer p ptr after Free: got %p, must be nil ", b.p)
+	}
+
+	if c := b.Cap(); c != oldCap {
+		t.Fatalf("wrong buffer cap value after Free: want %d, got %d", oldCap, c)
+	}
+
+	if bb := b.Bytes(); !IsEqualByteSlicesBakAry(oldBuf, bb) {
+		t.Fatalf("mismatch buffer bakary after free: want %p, got %p", oldBuf, bb)
+	}
+
+	b = p.Get()
+
+	if b != oldB {
+		t.Fatalf("second pool buffer mismatch with first: want %#v, got %#v", oldB, b)
+	}
+
+	curContent := string(b.Bytes()[:len(resultsv)])
+
+	if curContent != resultsv {
+		t.Fatalf("wrong bakary content value in same buffer after pooling: want %s, got %s", resultsv, curContent)
+	}
+
+	// now test sequential r/ws
+
+	if err := testPoolBufRW(&p, "seq"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// go test -count=1 -v -run "^TestPoolParallelFlow$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestPoolParallelFlow$" 2> fmt.log
+// go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
+func TestPoolParallelFlow(t *testing.T) {
+
+	const (
+		concurrent = 30
+		timeout    = (concurrent / 2) * time.Second
+	)
+
+	var (
+		wg sync.WaitGroup
+		p  bufferpool
+	)
+
+	// immediately set the required number of concurrent threads
+	wg.Add(concurrent)
+
+	concurrentRoutineClosure := func(p *bufferpool, idx int) {
+
+		mark := fmt.Sprintf("parallel:%d", idx)
+
+		if err := testPoolBufRW(p, mark); err != nil {
+			t.Fatalf("%s: %v", mark, err)
+		}
+
+		wg.Done()
+	}
+
+	for i := 0; i < concurrent; i++ {
+		go concurrentRoutineClosure(&p, i)
+	}
+
+	stopCh := make(chan struct{})
+
+	go func() {
+		wg.Wait()
+		close(stopCh)
+	}()
+
+	select {
+	case <-stopCh:
+	case <-time.After(timeout):
+		t.Fatalf("timeout after %d", timeout/time.Second)
+	}
+}
 
 // issues
 

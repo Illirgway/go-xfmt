@@ -38,10 +38,10 @@ func init() {
 // go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
 
-// go test -count=1 -v -run "^TestSprint1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestSprintLn1$" 2> fmt.log
+// go test -count=1 -v -run "^TestSprint$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestSprintLn$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestSprint1(t *testing.T) {
+func TestSprint(t *testing.T) {
 
 	s := Sprint(testcaseSprintList...)
 
@@ -54,10 +54,10 @@ func TestSprint1(t *testing.T) {
 	}
 }
 
-// go test -count=1 -v -run "^TestSprintLn1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestSprintLn1$" 2> fmt.log
+// go test -count=1 -v -run "^TestSprintLn$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestSprintLn$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestSprintLn1(t *testing.T) {
+func TestSprintLn(t *testing.T) {
 
 	s := Sprintln(testcaseSprintList...)
 

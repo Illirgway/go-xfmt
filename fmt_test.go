@@ -227,10 +227,10 @@ var adaptedFmtTestCases1 = [...]fmtTestCase{
 	{"%★", tftc1arg13str, "%!★(string=" + tftc1arg13str + ")"},
 }
 
-// go test -count=1 -v -run "^TestAdaptedFmtTestCases1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestAdaptedFmtTestCases1$" 2> fmt.log
+// go test -count=1 -v -run "^TestAdaptedFmtTestCases$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestAdaptedFmtTestCases$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestAdaptedFmtTestCases1(t *testing.T) {
+func TestAdaptedFmtTestCases(t *testing.T) {
 
 	nerrs, sz := 0, len(adaptedFmtTestCases1)
 
@@ -253,17 +253,40 @@ func TestAdaptedFmtTestCases1(t *testing.T) {
 
 type SL []string // strings list
 
-type fmtReorderTestCase struct {
+type fmtSLTestCase struct {
 	format string
 	args   SL
 	result string
 }
 
-func (c *fmtReorderTestCase) sprintf() string {
+func (c *fmtSLTestCase) sprintf() string {
 	return Sprintf(c.format, c.args...)
 }
 
-var adaptedFmtReorderTestCases1 = [...]fmtReorderTestCase{
+type fmtSLTestCases []fmtSLTestCase
+
+func (cases fmtSLTestCases) run(t *testing.T, test string) {
+
+	nerrs, sz := 0, len(cases)
+
+	for i := 0; i < sz; i++ {
+
+		tcase := &cases[i]
+
+		if want, got := tcase.result, tcase.sprintf(); want != got {
+			t.Errorf("adapted %s test case %d Sprintf(%q, %#v) mismatch: want <%s>, got <%s> (xfmt: %#v)",
+				test, i, tcase.format, tcase.args, want, got, parseFormat(tcase.format))
+
+			nerrs++
+		}
+	}
+
+	if nerrs > 0 {
+		t.Fatalf("some tests finished with errors: %d of %d", nerrs, sz)
+	}
+}
+
+var adaptedFmtReorderTestCases1 = [...]fmtSLTestCase{
 	{"%[1]s", SL{"1"}, "1"},
 	{"%[2]s", SL{"2", "1"}, "1"},
 	{"%[2]s %[1]s", SL{"1", "2"}, "2 1"},
@@ -298,28 +321,11 @@ var adaptedFmtReorderTestCases1 = [...]fmtReorderTestCase{
 	{"%.2147483648s", SL{"zyx"}, "%!(NOVERB)%!(EXTRA string=zyx)"},
 }
 
-// go test -count=1 -v -run "^TestAdaptedFmtReorderTestCases1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestAdaptedFmtReorderTestCases1$" 2> fmt.log
+// go test -count=1 -v -run "^TestAdaptedFmtReorderTestCases$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestAdaptedFmtReorderTestCases$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestAdaptedFmtReorderTestCases1(t *testing.T) {
-
-	nerrs, sz := 0, len(adaptedFmtReorderTestCases1)
-
-	for i := 0; i < sz; i++ {
-
-		tcase := &adaptedFmtReorderTestCases1[i]
-
-		if want, got := tcase.result, tcase.sprintf(); want != got {
-			t.Errorf("adapted reorder test case %d Sprintf(%q, %#v) mismatch: want <%s>, got <%s> (xfmt: %#v)",
-				i, tcase.format, tcase.args, want, got, parseFormat(tcase.format))
-
-			nerrs++
-		}
-	}
-
-	if nerrs > 0 {
-		t.Fatalf("some tests finished with errors: %d of %d", nerrs, sz)
-	}
+func TestAdaptedFmtReorderTestCases(t *testing.T) {
+	fmtSLTestCases(adaptedFmtReorderTestCases1[:]).run(t, "reorder")
 }
 
 // benchmarks
@@ -446,8 +452,8 @@ var mallocTestCases1 = [...]mallocTestCase{
 	}},
 }
 
-// go test -count=1 -v -run "^TestAssertMallocs1$"
-func TestAssertMallocs1(t *testing.T) {
+// go test -count=1 -v -run "^TestAssertMallocs$"
+func TestAssertMallocs(t *testing.T) {
 
 	if testing.Short() {
 		t.Skip("skipping malloc count in short mode")
@@ -465,6 +471,33 @@ func TestAssertMallocs1(t *testing.T) {
 	}
 }
 
-// TODO flags tests
+// indir width and prec tests (startests) - should check for errors, no indir values are processing
 
-// TODO indir width and prec tests (startests) - should check for errors, no indir values are processing
+var adaptedFmtIndirTestCases1 = [...]fmtSLTestCase{
+	{"%*s", SL{"7", "13"}, "%!(BADWIDTH)13"},
+	{"%-*s", SL{"7", "13"}, "%!(BADWIDTH)13"},
+	{"%*s", SL{"-7", "13"}, "%!(BADWIDTH)13"},
+	{"%-*s", SL{"-7", "13"}, "%!(BADWIDTH)13"},
+	{"%.*s", SL{"7", "13"}, "%!(BADPREC)13"},
+	{"%*.*s", SL{"11", "3", "13"}, "%!(BADWIDTH)%!(BADPREC)13"},
+	{"%0*s", SL{"7", "13"}, "%!(BADWIDTH)13"},
+	{"%0*s", SL{"0x07", "13"}, "%!(BADWIDTH)13"},
+
+	// erroneous
+	{"%*s", SL{"", "13"}, "%!(BADWIDTH)13"},
+	{"%*s", SL{"1048577", "13"}, "%!(BADWIDTH)13"},
+	{"%*s", SL{"-1048577", "13"}, "%!(BADWIDTH)13"},
+	{"%.*s", SL{"", "13"}, "%!(BADPREC)13"},
+	{"%.*s", SL{"-1", "13"}, "%!(BADPREC)13"},
+	{"%.*s", SL{"1048577", "13"}, "%!(BADPREC)13"},
+	{"%.*s", SL{"9223372036854775808", "13"}, "%!(BADPREC)13"},  // Huge negative (-inf).
+	{"%.*s", SL{"18446744073709551615", "13"}, "%!(BADPREC)13"}, // Small negative (-1).
+	{"%*% %s", SL{"17", "7"}, "% 7"},
+	{"%*", SL{"7"}, "%!(NOVERB)"},
+	{"%*", SL{"7", "xfmt"}, "%!(NOVERB)%!(EXTRA string=xfmt)"},
+}
+
+// go test -count=1 -v -run "^TestWidthAndPrecision$"
+func TestWidthAndPrecision(t *testing.T) {
+	fmtSLTestCases(adaptedFmtIndirTestCases1[:]).run(t, "indir")
+}

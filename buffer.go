@@ -96,9 +96,9 @@ func (p *bufferpool) Get() (b *buffer) {
 // PPSL use `Markov's inequality` to filter curSizes
 func (p *bufferpool) Put(b *buffer) {
 
-	/*if b == nil {
+	if b == nil {
 		return
-	}*/
+	}
 
 	/*
 		curSize, maxSize := uint(b.Len()), uint(maxAllowedBufSize)

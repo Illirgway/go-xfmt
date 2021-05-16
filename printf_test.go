@@ -20,28 +20,41 @@ package xfmt
 
 import (
 	"bytes"
+	"fmt"
 	"runtime"
 	"testing"
 )
 
-//TODO
+func hideFromVet(s string) string {
+	return s
+}
 
-// go test -count=1 -v -run "^TestPrinterSprintf1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestPrinterSprintf1$" 2> fmt.log
+// go test -count=1 -v -run "^TestPrinterSprintf$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestPrinterSprintf$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestPrinterSprintf1(t *testing.T) {
+func TestPrinterSprintf(t *testing.T) {
 
-	purgeCaches()
+	// TODO append additional cases to format string
 
-	SetCacheThreshold(CacheAlways)
+	const (
+		format = "head string :: %s mid %% => joined %13.7[6]s%%%.13q%[2]x %#q %#x // %# X\n %#0 -+[2]s ignores flags %#23.15q <==> cdr"
+		arg1   = "1HnBCQV$&Y25@WpMNMz*LI42GT6hwNI"
+		arg2   = "t@ALoGT+8_-K@ss%RrF!fT5KdG5?O-e"
+		arg3   = "Cwf3_tfEMHtK^@_bT1d2#zO-&Buk22@"
+		arg4   = "HR6L!DY|cE_Q|mfQ^D62YNTWkA@WCtx"
+		arg5   = "53aXrA@ZuX+i7V+8rtaneNkdNw^fFk+"
+		arg6   = "j%bQiwg*PbTpQqj&R1E!nUwMpFj31WC"
+		arg7   = "N$i0xM$4|94+9ZonGqweYLdnF1Vl=!!"
+	)
 
-	t.Log(Sprintf("%% ||| %s ||| %q ||| % #x", tpfc1argpct1, tpfc1argbqqt1, tpfc1argutf8c))
-	t.Logf("%#v", countersCache.counters)
-	t.Logf("%#v", xfmtCache.cache)
+	// without caching
+	r := esprintf(format, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 
-	/*for k, v := range xfmtCache.cache {
-		t.Logf("%q => %#v", k, v)
-	}*/
+	//t.Log(r)
+
+	if w := fmt.Sprintf(hideFromVet(format), arg1, arg2, arg3, arg4, arg5, arg6, arg7); r != w {
+		t.Fatalf("unexpected result: want <%s> got <%s>", w, r)
+	}
 }
 
 // benchmarks

@@ -416,7 +416,6 @@ parseLoop:
 const badArgNum = -1
 
 // SEE src/fmt/print.go::(*pp).argNumber()
-// `go1.13: cannot inline tryArgNum: function too complex: cost 100 exceeds budget 80`
 // NOTE `proper` is always true when `found` is false
 //go:nosplit
 func tryArgNum(argNum int, format string, i uint) (newArgNum int, j uint, found, proper bool) {
@@ -427,7 +426,7 @@ func tryArgNum(argNum int, format string, i uint) (newArgNum int, j uint, found,
 
 	newArgNum, offset := parseArgNum(format[i:])
 
-	if newArgNum == badArgNum {
+	if (newArgNum == badArgNum) || (newArgNum > maxNum) {
 		return argNum, i + offset, true, false
 	}
 

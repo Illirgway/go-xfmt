@@ -834,10 +834,10 @@ var parseFormatTestCases1 = [...]parseFormatTestCase{
 // TODO tests for error cases and equality
 // TODO adapted original fmt tests
 
-// go test -count=1 -v -run "^TestParseFormatCases1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestParseFormatCases1$" 2> fmt.log
+// go test -count=1 -v -run "^TestParseFormatCases$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestParseFormatCases$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestParseFormatCases1(t *testing.T) {
+func TestParseFormatCases(t *testing.T) {
 
 	nerrs, sz := 0, len(parseFormatTestCases1)
 
@@ -858,9 +858,9 @@ func TestParseFormatCases1(t *testing.T) {
 
 // TODO
 
-// go test -count=1 -v -run "^TestAssertWithFmtPkg1$"
-// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestAssertWithFmtPkg1$" 2> fmt.log
+// go test -count=1 -v -run "^TestAssertWithFmtPkg$"
+// go test -count=1 -o fmt.exe -gcflags "-m -m -d=ssa/check_bce/debug=1" -v -run "^TestAssertWithFmtPkg$" 2> fmt.log
 // go tool objdump -S -s "go-xfmt" fmt.exe > fmt.disasm
-func TestAssertWithFmtPkg1(t *testing.T) {
+func TestAssertWithFmtPkg(t *testing.T) {
 	t.Log(esprintf("%% ||| %s ||| %q ||| % #x", tpfc1argpct1, tpfc1argbqqt1, tpfc1argutf8c))
 }
